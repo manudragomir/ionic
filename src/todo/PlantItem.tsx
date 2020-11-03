@@ -3,7 +3,7 @@ import { IonButton, IonIcon, IonItem, IonLabel } from '@ionic/react';
 import { leafOutline, closeCircleOutline } from 'ionicons/icons';
 import { PlantProps } from './PlantProps'
 
-// interface PlantPropsExtended extends PlantProps
+// interface PlantPropsMoreExtended extends PlantPropsExtended
 // {
 //   deleteMethod?: (id: String) => Promise<any>
 // } 

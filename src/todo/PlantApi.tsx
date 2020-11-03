@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { PlantProps } from './PlantProps';
 
+const withoutHttpUrl = 'localhost:3333'
 const baseUrl = 'http://localhost:3333';
 
 const config = {
@@ -60,5 +61,31 @@ export const editPlantOnServer: (plant: PlantProps) => Promise<PlantProps[]> = p
         .catch((err) => {
             return Promise.reject(err);
         })
+}
+
+interface MessageData {
+    event: string;
+    payload: {
+      item: PlantProps;
+    };
+}  
+
+export const newWebSocket = (onMessage: (data: MessageData) => void) => {
+    const ws = new WebSocket(`ws://${withoutHttpUrl}`)
+    ws.onopen = () => {
+        console.log('web socket onopen')
+    };
+    ws.onclose = () => {
+        console.log('web socket onclose');
+    };
+    ws.onerror = error => {
+        console.log('web socket onerror', error);
+    };
+    ws.onmessage = messageEvent => {
+        console.log('web socket onmessage');
+        onMessage(JSON.parse(messageEvent.data));
+    };
+    return () => {
+      ws.close();
     }
-    
+}

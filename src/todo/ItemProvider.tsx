@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { useEffect, useReducer, useState } from 'react';
-import { deletePlantFromServer, editPlantOnServer, getPlantsFromServer, savePlantOnServer } from './PlantApi';
+import { deletePlantFromServer, editPlantOnServer, getPlantsFromServer, newWebSocket, savePlantOnServer } from './PlantApi';
 import { PlantProps } from './PlantProps'
 import PropTypes from 'prop-types';
 
@@ -53,6 +53,10 @@ const DELETE_ITEM_STARTED = 'DELETE_ITEM_STARTED';
 const DELETE_ITEM_SUCCEEDED = 'DELETE_ITEM_SUCCEEDED';
 const DELETE_ITEM_FAILED = 'DELETE_ITEM_FAILED';
 
+const SERVER_ITEM_INCOMING = 'SERVER_ITEM_INCOMING';
+const SERVER_ITEM_REMOVING = 'SERVER_ITEM_REMOVING';
+const SERVER_ITEM_UPDATED = 'SERVER_ITEM_UPDATED';
+
 const reducer: (state: PlantsState, action: ActionProps) => PlantsState = 
   (state, {type, payload}) => {
     switch(type){
@@ -67,13 +71,44 @@ const reducer: (state: PlantsState, action: ActionProps) => PlantsState =
       case SAVE_ITEM_SUCCEEDED:
         return {...state, plants: payload.plants, saving: false}
       case SAVE_ITEM_FAILED:
-        return {...state, savingError: payload.error}
+        return {...state, savingError: payload.error, saving: false}
       case DELETE_ITEM_STARTED:
         return {...state, deleting: true};
       case DELETE_ITEM_SUCCEEDED:
         return {...state, plants: payload.plants, deleting: false}
       case DELETE_ITEM_FAILED:
-        return {...state, deletingError: payload.error}
+        return {...state, deletingError: payload.error, deleting: false}
+      case SERVER_ITEM_REMOVING:{
+        const plants = [...(state.plants || [])];
+        const plantRemoved = payload.item;
+        let indexPlant = plants.findIndex(it => it.id === plantRemoved.id);
+        if(indexPlant === -1){
+          return state;
+        }
+        plants.splice(indexPlant, 1);
+        return {...state, plants}
+      }
+      case SERVER_ITEM_INCOMING:{
+        const plants = [...(state.plants || [])];
+        const plantAdded = payload.item;
+        let indexPlant = plants.findIndex(it => it.id === plantAdded.id);
+        if(indexPlant !== -1){
+          return state;
+        }
+        plants.push(plantAdded);
+        return {...state, plants}
+      }
+      case SERVER_ITEM_UPDATED:{
+        const plants = [...(state.plants || [])];
+        const plantUpdated = payload.item;
+        let indexPlant = plants.findIndex(it => it.id === plantUpdated.id);
+        if(indexPlant === -1){
+          return state;
+        }
+        plants[indexPlant] = plantUpdated;
+        return {...state, plants}
+      }
+        
       default:
         return state;
     }
@@ -89,6 +124,7 @@ export const ItemProvider: React.FC<ItemProviderProps> = ( {children}) => {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   useEffect(getPlants, [])
+  useEffect(wsEffect, []);
 
   const { plants, fetching, fetchingError, saving, savingError, deleting } = state;
 
@@ -158,6 +194,31 @@ export const ItemProvider: React.FC<ItemProviderProps> = ( {children}) => {
       dispatch({ type: SAVE_ITEM_SUCCEEDED, payload: { plants: updatedPlants } });
     } catch (error) {
       dispatch({ type: SAVE_ITEM_FAILED, payload: { error } });
+    }
+  }
+
+  function wsEffect() {
+    let canceled = false;
+    const closeWebSocket = newWebSocket(message => {
+      if (canceled) {
+        return;
+      }
+      const { event, payload: { item }} = message;
+      console.log(`ws message, item ${event}`);
+      if (event === 'created') {
+        dispatch({ type: SERVER_ITEM_INCOMING, payload: { item } });
+      }
+      else if(event === 'updated'){
+        dispatch({type: SERVER_ITEM_UPDATED, payload: { item }});
+      }
+      else if(event === 'deleted'){
+        dispatch({type: SERVER_ITEM_REMOVING, payload: { item }});
+      }
+    });
+    return () => {
+      console.log('wsEffect - disconnecting');
+      canceled = true;
+      closeWebSocket();
     }
   }
 
