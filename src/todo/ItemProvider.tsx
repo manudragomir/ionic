@@ -68,14 +68,32 @@ const reducer: (state: PlantsState, action: ActionProps) => PlantsState =
         return {...state, fetching: false, fetchingError: payload.error}
       case SAVE_ITEM_STARTED:
         return {...state, saving: true}
-      case SAVE_ITEM_SUCCEEDED:
-        return {...state, plants: payload.plants, saving: false}
+      case SAVE_ITEM_SUCCEEDED:{
+        const plant = payload.plant;
+        const updatedPlants = [...(state.plants || [])]
+        let indexPlant = updatedPlants.findIndex(it => it.id === plant.id);
+        if(indexPlant === -1){
+          updatedPlants.push(plant);
+        }
+        else{
+          updatedPlants[indexPlant] = plant;
+        }
+        return {...state, plants: updatedPlants, saving: false}
+      }
       case SAVE_ITEM_FAILED:
         return {...state, savingError: payload.error, saving: false}
       case DELETE_ITEM_STARTED:
         return {...state, deleting: true};
-      case DELETE_ITEM_SUCCEEDED:
-        return {...state, plants: payload.plants, deleting: false}
+      case DELETE_ITEM_SUCCEEDED:{
+        const plants = [...(state.plants || [])];
+        const plantRemoved = payload.plant;
+        let indexPlant = plants.findIndex(it => it.id === plantRemoved.id);
+        if(indexPlant === -1){
+          return state;
+        }
+        plants.splice(indexPlant, 1);
+        return {...state, plants, deleting: false}
+      }
       case DELETE_ITEM_FAILED:
         return {...state, deletingError: payload.error, deleting: false}
       case SERVER_ITEM_REMOVING:{
@@ -169,8 +187,8 @@ export const ItemProvider: React.FC<ItemProviderProps> = ( {children}) => {
   async function savePlantCallback(plant: PlantProps) {
     try {
       dispatch({ type: SAVE_ITEM_STARTED });
-      const updatedPlants = await savePlantOnServer(plant);
-      dispatch({ type: SAVE_ITEM_SUCCEEDED, payload: { plants: updatedPlants } });
+      const newPlant = await savePlantOnServer(plant);
+      dispatch({ type: SAVE_ITEM_SUCCEEDED, payload: { plant: newPlant } });
     } catch (error) {
       dispatch({ type: SAVE_ITEM_FAILED, payload: { error } });
     }
@@ -179,8 +197,8 @@ export const ItemProvider: React.FC<ItemProviderProps> = ( {children}) => {
   async function editPlantCallback(plant: PlantProps) {
     try {
       dispatch({ type: SAVE_ITEM_STARTED });
-      const updatedPlants = await editPlantOnServer(plant);
-      dispatch({ type: SAVE_ITEM_SUCCEEDED, payload: { plants: updatedPlants } });
+      const updatedPlant = await editPlantOnServer(plant);
+      dispatch({ type: SAVE_ITEM_SUCCEEDED, payload: { plant: updatedPlant } });
     } catch (error) {
       console.log("HEI");
       dispatch({ type: SAVE_ITEM_FAILED, payload: { error } });
@@ -189,11 +207,11 @@ export const ItemProvider: React.FC<ItemProviderProps> = ( {children}) => {
 
   async function deletePlantCallback(id: String){
     try {
-      dispatch({ type: SAVE_ITEM_STARTED });
-      const updatedPlants = await deletePlantFromServer(id);
-      dispatch({ type: SAVE_ITEM_SUCCEEDED, payload: { plants: updatedPlants } });
+      dispatch({ type: DELETE_ITEM_STARTED });
+      const deletedPlant = await deletePlantFromServer(id);
+      dispatch({ type: DELETE_ITEM_SUCCEEDED, payload: { plant: deletedPlant } });
     } catch (error) {
-      dispatch({ type: SAVE_ITEM_FAILED, payload: { error } });
+      dispatch({ type: DELETE_ITEM_FAILED, payload: { error } });
     }
   }
 
