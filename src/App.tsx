@@ -22,23 +22,27 @@ import '@ionic/react/css/display.css';
 /* Theme variables */
 import './theme/variables.css';
 
-import PlantEdit from './todo/PlantEdit'
-import PlantAdd from './todo/PlantAdd'
-import PlantList from './todo/PlantList'
-import { ItemProvider } from './todo/ItemProvider'
+import { PlantProvider } from './plant/PlantProvider';
+import { PlantEdit, PlantList, PlantAdd } from './plant';
+import { AuthProvider, Login, PrivateRoute } from './auth';
 
 const App: React.FC = () => (
   <IonApp>
-    <ItemProvider>
+    <PlantProvider>
       <IonReactRouter>
         <IonRouterOutlet>
-          <Route path="/plants" component={PlantList} exact={true} />
-          <Route path="/new_plant" component={PlantAdd} exact={true} />
-          <Route path="/plants/:id" component={PlantEdit} exact={true} />
-          <Route exact path="/" render={() => <Redirect to="/plants" />} />
+          <AuthProvider>
+            <Route path="/login" component={Login} exact={true} />
+            <PlantProvider>
+              <PrivateRoute path="/plants/" component={PlantList} exact={true}/>
+              <PrivateRoute path="/new_plant" component={PlantAdd} exact={true}/>
+              <PrivateRoute path="/plants/:id" component={PlantEdit} exact={true}/>
+            </PlantProvider>
+            <Route exact path="/" render={() => <Redirect to="/plants"/>}/>
+          </AuthProvider>
         </IonRouterOutlet>
       </IonReactRouter>
-    </ItemProvider>
+    </PlantProvider>
   </IonApp>
 );
 

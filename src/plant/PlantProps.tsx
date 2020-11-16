@@ -1,5 +1,6 @@
 export interface PlantProps{
-    id?: string;
+    _id?: string;
     name: string;
     description: string;
+    type: string;
 }

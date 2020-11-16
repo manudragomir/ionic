@@ -12,23 +12,25 @@ import {
   IonTitle,
   IonToolbar
 } from '@ionic/react';
-import { ItemContext } from './ItemProvider';
+import { PlantContext } from './PlantProvider';
 import { RouteComponentProps } from 'react-router';
 import { PlantProps } from './PlantProps';
 
 
 const PlantAdd: React.FC<RouteComponentProps> = ({ history }) => {
-  const { saving, savingError, addPlant } = useContext(ItemContext);
+  const { saving, savingError, addPlant } = useContext(PlantContext);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [type, setType] = useState('');
   const [plant, setPlant] = useState<PlantProps>();
 
   useEffect(() => {
     setPlant({
         description: description,
-        name: name});
-    }, [description, name]);
+        name: name,
+        type: type});
+    }, [description, name, type]);
 
   const handleSave = () => {
     plant && addPlant && addPlant(plant).then(() => history.goBack());
@@ -56,6 +58,11 @@ const PlantAdd: React.FC<RouteComponentProps> = ({ history }) => {
         <IonItem>
             <IonLabel position="floating">Plant's Description</IonLabel>
             <IonInput value={description} onIonChange={e => setDescription(e.detail.value!)}></IonInput>
+        </IonItem>
+
+        <IonItem>
+            <IonLabel position="floating">Plant's Type</IonLabel>
+            <IonInput value={type} onIonChange={e => setType(e.detail.value!)}></IonInput>
         </IonItem>
 
         <IonLoading isOpen={saving} />

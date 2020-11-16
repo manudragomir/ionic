@@ -15,7 +15,7 @@ import {
   IonTitle,
   IonToolbar
 } from '@ionic/react';
-import { ItemContext } from './ItemProvider';
+import { PlantContext } from './PlantProvider';
 import { RouteComponentProps } from 'react-router';
 import { PlantProps } from './PlantProps';
 import { cloudUploadOutline, trashOutline } from 'ionicons/icons';
@@ -25,24 +25,26 @@ interface PlantEditProps extends RouteComponentProps<{id: string;}> {}
 
 
 const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
-  const { plants, saving, savingError, editPlant, deletePlant } = useContext(ItemContext);
+  const { plants, saving, savingError, editPlant, deletePlant } = useContext(PlantContext);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [type, setType] = useState('');
   const [plant, setPlant] = useState<PlantProps>();
 
   useEffect(() => {
     const routeId = match.params.id;
-    const plant = plants?.find(it => it.id === routeId);
+    const plant = plants?.find(it => it._id === routeId);
     setPlant(plant);
     if (plant) {
       setName(plant.name);
       setDescription(plant.description);
+      setType(plant.type);
     }
   }, [match.params.id, plants]);
 
   const handleEdit = () => {
-    const editedPlant = {...plant, description, name} ;
+    const editedPlant = {...plant, description, name, type} ;
     editPlant && editPlant(editedPlant).then(() => history.goBack());
   };
 
@@ -69,6 +71,11 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
         <IonItem>
             <IonLabel position="floating">Description</IonLabel>
             <IonInput value={description} onIonChange={e => setDescription(e.detail.value!)}></IonInput>
+        </IonItem>
+
+        <IonItem>
+            <IonLabel position="floating">Type</IonLabel>
+            <IonInput value={type} onIonChange={e => setType(e.detail.value!)}></IonInput>
         </IonItem>
 
         <IonLoading isOpen={saving} />

@@ -1,12 +1,14 @@
 import React, { useContext } from 'react'
-import {IonContent, IonFabButton, IonHeader, IonLabel, IonPage, IonTitle, IonToolbar, IonFab, IonIcon, IonLoading, IonList} from '@ionic/react'
+import {IonContent, IonFabButton, IonHeader, IonLabel, IonPage, IonTitle, IonToolbar, IonFab, IonIcon, IonLoading, IonList, IonButton} from '@ionic/react'
 import PlantItem from './PlantItem'
-import { ItemContext } from './ItemProvider'
+import { PlantContext } from './PlantProvider'
 import { add } from 'ionicons/icons';
 import { RouteComponentProps } from 'react-router';
+import { AuthContext } from '../auth';
 
 const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
-    const { plants, fetching, fetchingError } = useContext(ItemContext)
+    const { plants, fetching, fetchingError } = useContext(PlantContext)
+    const { logout } = useContext(AuthContext);
     return (
         <IonPage>
             <IonHeader>
@@ -14,6 +16,14 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
                     <IonTitle>
                         Plants Repository
                     </IonTitle>
+                    
+                    <IonButton slot="end" onClick={() => {
+                        if(logout !== undefined) {
+                            logout();
+                            history.push('/login')
+                        }
+                    }}
+                        >Logout</IonButton>
                 </IonToolbar>
             </IonHeader>
 
@@ -25,16 +35,16 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
 
                 {plants && (
                     <IonList>
-                        {plants.map(({id, name, description}) => 
-                            <PlantItem key={id} name={name} description={description} 
-                                        onEdit={() => {history.push(`/plants/${id}`)}} />)}
+                        {plants.map(({_id, name, description, type}) => 
+                            <PlantItem key={_id} name={name} description={description} type={type}
+                                        onEdit={() => {history.push(`/plants/${_id}`)}} />)}
                     </IonList>
                     )}
                 
                 {fetchingError && (
                     <div>
                         <h2>Failed to fetch plants :( </h2>
-                        <p>{fetchingError || 'Server failed to send plants'}</p>
+                        <p>{fetchingError.message || 'Server failed to send plants'}</p>
                     </div>
                 )}
 

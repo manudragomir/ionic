@@ -1,18 +1,12 @@
 import axios from 'axios';
 import { PlantProps } from './PlantProps';
+import { config, baseUrl, withoutHttpUrl, authConfig } from '../core'
 
-const withoutHttpUrl = 'localhost:3333'
-const baseUrl = 'http://localhost:3333';
+const plantUrl = `http://${withoutHttpUrl}/api/plant`;
 
-const config = {
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  };
-
-export const getPlantsFromServer: () => Promise<PlantProps[]> = () => {
+export const getPlantsFromServer: (token: string) => Promise<PlantProps[]> = token => {
     return axios
-        .get(`${baseUrl}/plants`)
+        .get(plantUrl, authConfig(token))
         .then(res => {
             console.log('plants got with success');
             return Promise.resolve(res.data);
@@ -23,10 +17,10 @@ export const getPlantsFromServer: () => Promise<PlantProps[]> = () => {
         })
 }   
 
-export const savePlantOnServer: (plant: PlantProps) => Promise<PlantProps[]> = plant => {
+export const savePlantOnServer: (token: string, plant: PlantProps) => Promise<PlantProps[]> = (token, plant) => {
     console.log("Se salveaza")
     return axios
-        .post(`${baseUrl}/new_plant`, plant, config)
+        .post(`${plantUrl}/new`, plant, authConfig(token))
         .then((res) => {
             console.log(res.data);
             return Promise.resolve(res.data);
@@ -37,10 +31,10 @@ export const savePlantOnServer: (plant: PlantProps) => Promise<PlantProps[]> = p
     }
 
 
-export const deletePlantFromServer: (id: String) => Promise<PlantProps[]> = id => {
-    console.log("Se salveaza")
+export const deletePlantFromServer: (token: string, id: String) => Promise<PlantProps[]> = (token, id) => {
+    console.log("Se sterge")
     return axios
-        .delete(`${baseUrl}/plants/${id}`, config)
+        .delete(`${plantUrl}/${id}`, authConfig(token))
         .then((res) => {
             console.log(res.data);
             return Promise.resolve(res.data);
@@ -50,18 +44,31 @@ export const deletePlantFromServer: (id: String) => Promise<PlantProps[]> = id =
         })
     }
 
-export const editPlantOnServer: (plant: PlantProps) => Promise<PlantProps[]> = plant => {
+export const editPlantOnServer: (token: string, plant: PlantProps) => Promise<PlantProps[]> = (token, plant) => {
     console.log("Se face update")
     return axios
-        .put(`${baseUrl}/plants/${plant.id}`, plant, config)
+        .put(`${plantUrl}/${plant._id}`, plant, authConfig(token))
         .then((res) => {
             console.log(res.data);
             return Promise.resolve(res.data);
         })
         .catch((err) => {
             return Promise.reject(err);
-        })
+        });
 }
+
+// export const getTypesFromServer: (token: string) => Promise<string[]> = (token) => {
+//     console.log("Se iau tipurile")
+//     return axios
+//         .put(`${plantUrl}/filter/tags`, authConfig(token))
+//         .then((res) => {
+//             console.log(res.data);
+//             return Promise.resolve(res.data);
+//         })
+//         .catch((err) => {
+//             return Promise.reject(err);
+//     })
+// }
 
 interface MessageData {
     event: string;

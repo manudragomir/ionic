@@ -1,11 +1,12 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useContext } from 'react';
 import { useEffect, useReducer, useState } from 'react';
 import { deletePlantFromServer, editPlantOnServer, getPlantsFromServer, newWebSocket, savePlantOnServer } from './PlantApi';
 import { PlantProps } from './PlantProps'
 import PropTypes from 'prop-types';
+import { AuthContext } from '../auth';
 
 type SavePlantHeader = (plant: PlantProps) => Promise<any>
-type DeletePlantHeader = (id: String) => Promise<any>
+type DeletePlantHeader = (_id: String) => Promise<any>
 
 export interface PlantsState{
   plants?: PlantProps[],
@@ -71,7 +72,7 @@ const reducer: (state: PlantsState, action: ActionProps) => PlantsState =
       case SAVE_ITEM_SUCCEEDED:{
         const plant = payload.plant;
         const updatedPlants = [...(state.plants || [])]
-        let indexPlant = updatedPlants.findIndex(it => it.id === plant.id);
+        let indexPlant = updatedPlants.findIndex(it => it._id === plant._id);
         if(indexPlant === -1){
           updatedPlants.push(plant);
         }
@@ -87,7 +88,11 @@ const reducer: (state: PlantsState, action: ActionProps) => PlantsState =
       case DELETE_ITEM_SUCCEEDED:{
         const plants = [...(state.plants || [])];
         const plantRemoved = payload.plant;
-        let indexPlant = plants.findIndex(it => it.id === plantRemoved.id);
+        
+        console.log("plants" + plants.toString());
+        console.log("plantRemoved" + plantRemoved.toString());
+
+        let indexPlant = plants.findIndex(it => it._id === plantRemoved._id);
         if(indexPlant === -1){
           return state;
         }
@@ -99,7 +104,7 @@ const reducer: (state: PlantsState, action: ActionProps) => PlantsState =
       case SERVER_ITEM_REMOVING:{
         const plants = [...(state.plants || [])];
         const plantRemoved = payload.item;
-        let indexPlant = plants.findIndex(it => it.id === plantRemoved.id);
+        let indexPlant = plants.findIndex(it => it._id === plantRemoved._id);
         if(indexPlant === -1){
           return state;
         }
@@ -109,7 +114,7 @@ const reducer: (state: PlantsState, action: ActionProps) => PlantsState =
       case SERVER_ITEM_INCOMING:{
         const plants = [...(state.plants || [])];
         const plantAdded = payload.item;
-        let indexPlant = plants.findIndex(it => it.id === plantAdded.id);
+        let indexPlant = plants.findIndex(it => it._id === plantAdded._id);
         if(indexPlant !== -1){
           return state;
         }
@@ -119,7 +124,7 @@ const reducer: (state: PlantsState, action: ActionProps) => PlantsState =
       case SERVER_ITEM_UPDATED:{
         const plants = [...(state.plants || [])];
         const plantUpdated = payload.item;
-        let indexPlant = plants.findIndex(it => it.id === plantUpdated.id);
+        let indexPlant = plants.findIndex(it => it._id === plantUpdated._id);
         if(indexPlant === -1){
           return state;
         }
@@ -132,30 +137,31 @@ const reducer: (state: PlantsState, action: ActionProps) => PlantsState =
     }
 };
 
-export const ItemContext = React.createContext<PlantsState>(initialState);
+export const PlantContext = React.createContext<PlantsState>(initialState);
 
 interface ItemProviderProps {
   children: PropTypes.ReactNodeLike,
 }
 
-export const ItemProvider: React.FC<ItemProviderProps> = ( {children}) => {
+export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
+  const { token } = useContext(AuthContext);
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  useEffect(getPlants, [])
-  useEffect(wsEffect, []);
+  useEffect(getPlants, [token])
+  useEffect(wsEffect, [token]);
 
   const { plants, fetching, fetchingError, saving, savingError, deleting } = state;
 
-  const addPlant = useCallback<SavePlantHeader>(savePlantCallback, []);
-  const deletePlant = useCallback<DeletePlantHeader>(deletePlantCallback, []);
-  const editPlant = useCallback<SavePlantHeader>(editPlantCallback, []);
+  const addPlant = useCallback<SavePlantHeader>(savePlantCallback, [token]);
+  const deletePlant = useCallback<DeletePlantHeader>(deletePlantCallback, [token]);
+  const editPlant = useCallback<SavePlantHeader>(editPlantCallback, [token]);
 
   const sharedData = { plants, fetching, fetchingError, saving, savingError, deleting, addPlant, deletePlant, editPlant }
 
   return (
-    <ItemContext.Provider value={sharedData}>
+    <PlantContext.Provider value={sharedData}>
       {children}
-    </ItemContext.Provider>
+    </PlantContext.Provider>
   )
 
 
@@ -169,15 +175,19 @@ export const ItemProvider: React.FC<ItemProviderProps> = ( {children}) => {
     }
 
     async function fetchPlants() {
+      if(!token?.trim()){
+        return;
+      }
       try{
         console.log("fetch Items started");
         dispatch({type: FETCH_ITEMS_STARTED})
-        const plants = await getPlantsFromServer();
+        const plants = await getPlantsFromServer(token);
         if(!canceled){
           dispatch({type: FETCH_ITEMS_SUCCEEDED, payload: {plants}})
         }
       } catch(error){
         console.log("failed")
+        console.log(error);
         dispatch({type: FETCH_ITEMS_FAILED, payload: {error}})
       }
     }
@@ -187,7 +197,8 @@ export const ItemProvider: React.FC<ItemProviderProps> = ( {children}) => {
   async function savePlantCallback(plant: PlantProps) {
     try {
       dispatch({ type: SAVE_ITEM_STARTED });
-      const newPlant = await savePlantOnServer(plant);
+      const newPlant = await savePlantOnServer(token, plant);
+      console.log(newPlant);
       dispatch({ type: SAVE_ITEM_SUCCEEDED, payload: { plant: newPlant } });
     } catch (error) {
       dispatch({ type: SAVE_ITEM_FAILED, payload: { error } });
@@ -197,7 +208,7 @@ export const ItemProvider: React.FC<ItemProviderProps> = ( {children}) => {
   async function editPlantCallback(plant: PlantProps) {
     try {
       dispatch({ type: SAVE_ITEM_STARTED });
-      const updatedPlant = await editPlantOnServer(plant);
+      const updatedPlant = await editPlantOnServer(token, plant);
       dispatch({ type: SAVE_ITEM_SUCCEEDED, payload: { plant: updatedPlant } });
     } catch (error) {
       console.log("HEI");
@@ -205,10 +216,11 @@ export const ItemProvider: React.FC<ItemProviderProps> = ( {children}) => {
     }
   }
 
-  async function deletePlantCallback(id: String){
+  async function deletePlantCallback(_id: String){
     try {
       dispatch({ type: DELETE_ITEM_STARTED });
-      const deletedPlant = await deletePlantFromServer(id);
+      const deletedPlant = await deletePlantFromServer(token, _id);
+      console.log(deletedPlant);
       dispatch({ type: DELETE_ITEM_SUCCEEDED, payload: { plant: deletedPlant } });
     } catch (error) {
       dispatch({ type: DELETE_ITEM_FAILED, payload: { error } });
