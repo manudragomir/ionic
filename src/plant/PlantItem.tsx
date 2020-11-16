@@ -14,7 +14,7 @@ interface PlantPropsExtended extends PlantProps{
 
 const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type, onEdit }) => {
   return (
-    <IonItem style={{height: 500}}>
+    <IonItem style={{height: 200}}>
       <IonIcon icon={leafOutline} slot="start"></IonIcon>
       <IonLabel onClick={() => onEdit(_id)}>
         <h2>{name}</h2>

@@ -17,6 +17,7 @@ export interface AuthState{
     username?: string;
     password?: string;
     token: string;
+    refresh?: () => void;
 }
 
 const initialState: AuthState = {
@@ -35,11 +36,24 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
     const [state, setState] = useState<AuthState>(initialState);
+    const [refresher, setRefresher] = useState<boolean>(false);
     const { isAuthenticated, isAuthenticating, authenticationError, pendingAuthentication, token } = state;
     const login = useCallback<LoginFn>(loginCallback, []);
     const logout = useCallback<LogoutFn>(logoutCallback, []);
+
+    function refresh(): void{
+        setState({
+            ...state,
+            isAuthenticated: false,
+            token: ''
+        });
+        loginCallback(state.username, state.password);
+    }
+
     useEffect(authenticationEffect, [pendingAuthentication]);
-    const value = { isAuthenticated, login, logout, isAuthenticating, authenticationError, token };
+
+    const value = { isAuthenticated, login, logout, isAuthenticating, authenticationError, token, refresh };
+
     useEffect(loadTokenEffect, []);
 
     return (

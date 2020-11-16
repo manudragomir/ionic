@@ -1,12 +1,13 @@
 import React, { useCallback, useContext } from 'react';
 import { useEffect, useReducer, useState } from 'react';
-import { deletePlantFromServer, editPlantOnServer, getPlantsFromServer, newWebSocket, savePlantOnServer } from './PlantApi';
+import { deletePlantFromServer, editPlantOnServer, fetchPlantTypesFromServer, filterPlantsFromServer, getPlantsFromServer, newWebSocket, savePlantOnServer } from './PlantApi';
 import { PlantProps } from './PlantProps'
 import PropTypes from 'prop-types';
 import { AuthContext } from '../auth';
 
-type SavePlantHeader = (plant: PlantProps) => Promise<any>
-type DeletePlantHeader = (_id: String) => Promise<any>
+type SavePlantHeader = (plant: PlantProps) => Promise<any>;
+type DeletePlantHeader = (_id: String) => Promise<any>;
+type FilterPlantsHeader = (type: string) => Promise<any>;
 
 export interface PlantsState{
   plants?: PlantProps[],
@@ -21,7 +22,11 @@ export interface PlantsState{
 
   addPlant?: SavePlantHeader,
   deletePlant?: DeletePlantHeader,
-  editPlant?: SavePlantHeader
+  editPlant?: SavePlantHeader,
+  filterPlants?: FilterPlantsHeader,
+
+  types?: string[],
+  refreshTypes: boolean
 };
 
 const initialState: PlantsState = {
@@ -34,6 +39,8 @@ const initialState: PlantsState = {
   fetchingError: undefined,
   savingError: undefined,
   deletingError: undefined,
+  refreshTypes: true,
+  types: undefined
 };
 
 
@@ -58,6 +65,9 @@ const SERVER_ITEM_INCOMING = 'SERVER_ITEM_INCOMING';
 const SERVER_ITEM_REMOVING = 'SERVER_ITEM_REMOVING';
 const SERVER_ITEM_UPDATED = 'SERVER_ITEM_UPDATED';
 
+const FETCH_TYPES = 'FETCH_TYPES';
+const FETCH_TYPES_ERROR = 'FETCH_TYPES_ERROR';
+
 const reducer: (state: PlantsState, action: ActionProps) => PlantsState = 
   (state, {type, payload}) => {
     switch(type){
@@ -70,16 +80,17 @@ const reducer: (state: PlantsState, action: ActionProps) => PlantsState =
       case SAVE_ITEM_STARTED:
         return {...state, saving: true}
       case SAVE_ITEM_SUCCEEDED:{
-        const plant = payload.plant;
-        const updatedPlants = [...(state.plants || [])]
-        let indexPlant = updatedPlants.findIndex(it => it._id === plant._id);
-        if(indexPlant === -1){
-          updatedPlants.push(plant);
-        }
-        else{
-          updatedPlants[indexPlant] = plant;
-        }
-        return {...state, plants: updatedPlants, saving: false}
+        // const plant = payload.plant;
+        // const updatedPlants = [...(state.plants || [])]
+        // let indexPlant = updatedPlants.findIndex(it => it._id === plant._id);
+        // if(indexPlant === -1){
+        //   updatedPlants.push(plant);
+        // }
+        // else{
+        //   updatedPlants[indexPlant] = plant;
+        // }
+        // return {...state, plants: updatedPlants, saving: false}
+        return {...state, saving: false}
       }
       case SAVE_ITEM_FAILED:
         return {...state, savingError: payload.error, saving: false}
@@ -114,10 +125,6 @@ const reducer: (state: PlantsState, action: ActionProps) => PlantsState =
       case SERVER_ITEM_INCOMING:{
         const plants = [...(state.plants || [])];
         const plantAdded = payload.item;
-        let indexPlant = plants.findIndex(it => it._id === plantAdded._id);
-        if(indexPlant !== -1){
-          return state;
-        }
         plants.push(plantAdded);
         return {...state, plants}
       }
@@ -129,7 +136,14 @@ const reducer: (state: PlantsState, action: ActionProps) => PlantsState =
           return state;
         }
         plants[indexPlant] = plantUpdated;
-        return {...state, plants}
+        return {...state, plants};
+      }
+      case FETCH_TYPES:{
+        console.log("FETCH modify state" + payload.types.toString());
+        return {...state, types: payload.types};
+      }
+      case FETCH_TYPES_ERROR:{
+        return {...state};
       }
         
       default:
@@ -144,19 +158,22 @@ interface ItemProviderProps {
 }
 
 export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
-  const { token } = useContext(AuthContext);
+  const { token, refresh } = useContext(AuthContext);
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  useEffect(getPlants, [token])
+  useEffect(getPlants, [token]);
   useEffect(wsEffect, [token]);
+  useEffect(getPlantTypes, [token]);
 
-  const { plants, fetching, fetchingError, saving, savingError, deleting } = state;
+  const { plants, fetching, fetchingError, saving, savingError, deleting, refreshTypes, types  } = state;
+
 
   const addPlant = useCallback<SavePlantHeader>(savePlantCallback, [token]);
   const deletePlant = useCallback<DeletePlantHeader>(deletePlantCallback, [token]);
   const editPlant = useCallback<SavePlantHeader>(editPlantCallback, [token]);
+  const filterPlants = useCallback<FilterPlantsHeader>(filterPlantsCallback, [token]);
 
-  const sharedData = { plants, fetching, fetchingError, saving, savingError, deleting, addPlant, deletePlant, editPlant }
+  const sharedData = { plants, fetching, fetchingError, saving, savingError, deleting, addPlant, deletePlant, editPlant, filterPlants, types, refreshTypes }
 
   return (
     <PlantContext.Provider value={sharedData}>
@@ -164,6 +181,44 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
     </PlantContext.Provider>
   )
 
+  async function filterPlantsCallback(type: string) {
+    try {
+      const plants = await filterPlantsFromServer(token, type);
+      return plants;
+    } catch (error) {
+      console.log("EROARE MARE");
+        if(error.response.status == 401){
+          refresh && refresh();
+        }
+      return null;
+    }
+  }
+
+  function getPlantTypes(){
+    let canceled = false;
+
+    fetchPlantTypes();
+
+    return () => {
+      canceled = true;
+    }
+
+    async function fetchPlantTypes() {
+      if(!token?.trim()){
+        return;
+      }
+      try{
+        const types = await fetchPlantTypesFromServer(token);
+        console.log("TYPES" + types.toString());
+        if(!canceled){
+          dispatch({type: FETCH_TYPES, payload: {types} });
+        }
+      } catch(error){
+        console.log("failed types")
+        dispatch({type: FETCH_TYPES_ERROR, payload: error});
+      }
+    }
+  }
 
   function getPlants(){
     let canceled = false;
@@ -186,7 +241,11 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
           dispatch({type: FETCH_ITEMS_SUCCEEDED, payload: {plants}})
         }
       } catch(error){
-        console.log("failed")
+        console.log("EROARE MARE");
+        if(error.response.status == 401){
+          refresh && refresh();
+        }
+        console.log("failed");
         console.log(error);
         dispatch({type: FETCH_ITEMS_FAILED, payload: {error}})
       }
@@ -229,27 +288,29 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
 
   function wsEffect() {
     let canceled = false;
-    const closeWebSocket = newWebSocket(message => {
-      if (canceled) {
-        return;
-      }
-      const { event, payload: { item }} = message;
-      console.log(`ws message, item ${event}`);
-      if (event === 'created') {
-        dispatch({ type: SERVER_ITEM_INCOMING, payload: { item } });
-      }
-      else if(event === 'updated'){
-        dispatch({type: SERVER_ITEM_UPDATED, payload: { item }});
-      }
-      else if(event === 'deleted'){
-        dispatch({type: SERVER_ITEM_REMOVING, payload: { item }});
-      }
-    });
+    let closeWebSocket: () => void;
+    if(token?.trim()){
+      closeWebSocket = newWebSocket(token, message => {
+        if (canceled) {
+          return;
+        }
+        const { event, payload:  item } = message;
+        console.log(`ws message, item ${event}`);
+        if (event === 'created') {
+          dispatch({ type: SERVER_ITEM_INCOMING, payload: { item } });
+        }
+        else if(event === 'updated'){
+          dispatch({type: SERVER_ITEM_UPDATED, payload: { item }});
+        }
+        else if(event === 'deleted'){
+          dispatch({type: SERVER_ITEM_REMOVING, payload: { item }});
+        }
+      });
+    }
     return () => {
       console.log('wsEffect - disconnecting');
       canceled = true;
-      closeWebSocket();
+      closeWebSocket?.();
     }
   }
-
 };

@@ -57,18 +57,31 @@ export const editPlantOnServer: (token: string, plant: PlantProps) => Promise<Pl
         });
 }
 
-// export const getTypesFromServer: (token: string) => Promise<string[]> = (token) => {
-//     console.log("Se iau tipurile")
-//     return axios
-//         .put(`${plantUrl}/filter/tags`, authConfig(token))
-//         .then((res) => {
-//             console.log(res.data);
-//             return Promise.resolve(res.data);
-//         })
-//         .catch((err) => {
-//             return Promise.reject(err);
-//     })
-// }
+export const fetchPlantTypesFromServer: (token: string) => Promise<string[]> = (token) => {
+    console.log("Se iau tipurile")
+    return axios
+        .get(`${plantUrl}/filter/tags`, authConfig(token))
+        .then((res) => {
+            console.log(res.data);
+            return Promise.resolve(Object.keys(res.data));
+        })
+        .catch((err) => {
+            return Promise.reject(err);
+    })
+}
+
+export const filterPlantsFromServer: (token: string, type: string) => Promise<PlantProps[]> = (token, type) => {
+    console.log("se filtreaza")
+    return axios
+        .get(`${plantUrl}/filter/${type}`, authConfig(token))
+        .then((res) => {
+            console.log(res.data);
+            return Promise.resolve(res.data);
+        })
+        .catch((err) => {
+            return Promise.reject(err);
+    })
+}
 
 interface MessageData {
     event: string;
@@ -77,10 +90,11 @@ interface MessageData {
     };
 }  
 
-export const newWebSocket = (onMessage: (data: MessageData) => void) => {
+export const newWebSocket = (token: string, onMessage: (data: MessageData) => void) => {
     const ws = new WebSocket(`ws://${withoutHttpUrl}`)
     ws.onopen = () => {
-        console.log('web socket onopen')
+        console.log('web socket onopen');
+        ws.send(JSON.stringify({event: 'authorization', payload: {token}}));
     };
     ws.onclose = () => {
         console.log('web socket onclose');
