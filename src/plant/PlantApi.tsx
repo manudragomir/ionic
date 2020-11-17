@@ -70,10 +70,16 @@ export const fetchPlantTypesFromServer: (token: string) => Promise<string[]> = (
     })
 }
 
-export const filterPlantsFromServer: (token: string, type: string) => Promise<PlantProps[]> = (token, type) => {
-    console.log("se filtreaza")
+export const filterPlantsFromServer: (token: string, type: string, page?: number, limit?: number) => Promise<PlantProps[]> = (token, type, page, limit) => {
+    console.log("se filtreaza");
+    let url = `${plantUrl}/filter/${type}`;
+    console.log("PLANTAPI" + page + limit);
+    if(page !== undefined && limit !== undefined){
+        url = url.concat(`?page=${page}&limit=${limit}`);
+    }
+    console.log(url);
     return axios
-        .get(`${plantUrl}/filter/${type}`, authConfig(token))
+        .get(url, authConfig(token))
         .then((res) => {
             console.log(res.data);
             return Promise.resolve(res.data);

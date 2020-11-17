@@ -7,7 +7,7 @@ import { AuthContext } from '../auth';
 
 type SavePlantHeader = (plant: PlantProps) => Promise<any>;
 type DeletePlantHeader = (_id: String) => Promise<any>;
-type FilterPlantsHeader = (type: string) => Promise<any>;
+type FilterPlantsHeader = (type: string, page?: number, limit?: number) => Promise<any>;
 
 export interface PlantsState{
   plants?: PlantProps[],
@@ -181,9 +181,10 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
     </PlantContext.Provider>
   )
 
-  async function filterPlantsCallback(type: string) {
+  async function filterPlantsCallback(type: string, page?: number, limit?: number) {
     try {
-      const plants = await filterPlantsFromServer(token, type);
+      console.log("PLANT PROVIDER" + page + limit);
+      const plants = await filterPlantsFromServer(token, type, page, limit);
       return plants;
     } catch (error) {
       console.log("EROARE MARE");
