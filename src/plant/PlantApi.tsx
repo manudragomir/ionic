@@ -1,6 +1,11 @@
 import axios from 'axios';
 import { PlantProps } from './PlantProps';
 import { config, baseUrl, withoutHttpUrl, authConfig } from '../core'
+import { Plugins } from '@capacitor/core';
+import { planetSharp } from 'ionicons/icons';
+
+
+const { Storage } = Plugins;
 
 const plantUrl = `http://${withoutHttpUrl}/api/plant`;
 
@@ -87,6 +92,42 @@ export const filterPlantsFromServer: (token: string, type: string, page?: number
         .catch((err) => {
             return Promise.reject(err);
     })
+}
+
+export const cachePlants: (plants: PlantProps[]) => void = async (plants) => {
+    await Storage.clear();
+    plants.map(async plant => {
+        await Storage.set({
+            key: JSON.stringify(plant._id),
+            value:  JSON.stringify(plant)
+        });
+    });
+    console.log("store cached");
+}
+
+const getValue: (keyCome: string) => Promise<PlantProps> = (keyCome) => {
+    return (async () => {
+        const ret = await Storage.get({
+          key: keyCome
+        });
+        return Promise.resolve(ret).then( (val) => {
+            if(val.value != null){ 
+                return JSON.parse(val.value);
+            }
+        });
+    })();
+}
+
+export const loadCachePlants: () => Promise<any[]> = async () => {
+    console.log("load cache");
+    const {keys} = await Storage.keys();
+    let plants = await Promise.all(keys.map(async (key) => {
+        if(key != 'token'){
+            console.log(await getValue(key));
+            return await getValue(key);
+        }
+    }));
+    return plants;
 }
 
 interface MessageData {

@@ -9,7 +9,7 @@ import { PlantProps } from './PlantProps';
 
 const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
     const { plants, fetching, fetchingError, types, filterPlants } = useContext(PlantContext);
-    const { logout, token } = useContext(AuthContext);
+    const { logout, offline } = useContext(AuthContext);
     const limit = 3;
     const [ page, setPage ] = useState<number>(0);
     const [ filter, setFilter] = useState<string>('any');
@@ -19,38 +19,54 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
     const [ disableInfiniteScroll, setDisableInfiniteScroll] = useState<boolean>(false);
 
     async function getNextBatch($event: CustomEvent<void>) {
-        filterPlants?.(filter, page, limit).then( (filteredPlants) => {
-            if(filteredPlants.length == 0){
-                setDisableInfiniteScroll(true);
-            }
-            else{
-                setMyPlants(myPlants?.concat(filteredPlants));
-                if(filteredPlants.length < limit){
+        if(offline == false){
+            filterPlants?.(filter, page, limit).then( (filteredPlants) => {
+                if(filteredPlants.length == 0){
                     setDisableInfiniteScroll(true);
                 }
-                let nextPage = page + 1;
-                setPage(nextPage);
-            }
-        });
-        ($event.target as HTMLIonInfiniteScrollElement).complete();
-        
+                else{
+                    setMyPlants(myPlants?.concat(filteredPlants));
+                    if(filteredPlants.length < limit){
+                        setDisableInfiniteScroll(true);
+                    }
+                    let nextPage = page + 1;
+                    setPage(nextPage);
+                }
+            });
+            ($event.target as HTMLIonInfiniteScrollElement).complete();
+        }
     }
 
     useEffect(() => {
-        if(types !== undefined){
+        if(offline == false && types !== undefined){
             setCurrTypes(types);
+        }
+        if(offline == true){
+            setDisableInfiniteScroll(true);
         }
     }, []);
 
     useEffect( () => {
-        if(filter == undefined){
-            setMyPlants(plants);
+        if(offline == false){
+            if(filter == undefined){
+                setMyPlants(plants);
+            }
+            else{
+                filterPlants?.(filter, 0, limit).then( (filteredPlants) => {setMyPlants(filteredPlants);});
+                setPage(1);
+            }
         }
         else{
-            filterPlants?.(filter, 0, limit).then( (filteredPlants) => {setMyPlants(filteredPlants);});
-            setPage(1);
+            setMyPlants(plants);
+            console.log(plants);
         }
-    }, [filter, plants])
+    }, [filter, plants]);
+
+    useEffect( () => {
+        if(offline == true){
+            setMyPlants(plants);
+        }
+    }, [plants, offline]);
     return (
         <IonPage>
             <IonHeader>

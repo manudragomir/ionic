@@ -1,6 +1,6 @@
 import React, { useCallback, useContext } from 'react';
 import { useEffect, useReducer, useState } from 'react';
-import { deletePlantFromServer, editPlantOnServer, fetchPlantTypesFromServer, filterPlantsFromServer, getPlantsFromServer, newWebSocket, savePlantOnServer } from './PlantApi';
+import { cachePlants, loadCachePlants, deletePlantFromServer, editPlantOnServer, fetchPlantTypesFromServer, filterPlantsFromServer, getPlantsFromServer, newWebSocket, savePlantOnServer } from './PlantApi';
 import { PlantProps } from './PlantProps'
 import PropTypes from 'prop-types';
 import { AuthContext } from '../auth';
@@ -158,10 +158,10 @@ interface ItemProviderProps {
 }
 
 export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
-  const { token, refresh } = useContext(AuthContext);
+  const { token, refresh, offline } = useContext(AuthContext);
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  useEffect(getPlants, [token]);
+  useEffect(getPlants, [token, offline]);
   useEffect(wsEffect, [token]);
   useEffect(getPlantTypes, [token]);
 
@@ -181,6 +181,7 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
     </PlantContext.Provider>
   )
 
+
   async function filterPlantsCallback(type: string, page?: number, limit?: number) {
     try {
       console.log("PLANT PROVIDER" + page + limit);
@@ -188,9 +189,6 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
       return plants;
     } catch (error) {
       console.log("EROARE MARE");
-        if(error.response.status == 401){
-          refresh && refresh();
-        }
       return null;
     }
   }
@@ -222,8 +220,8 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
   }
 
   function getPlants(){
+    console.log("GET PLANTS" + offline);
     let canceled = false;
-
     fetchPlants();
 
     return () => {
@@ -231,6 +229,17 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
     }
 
     async function fetchPlants() {
+      console.log("FETCH");
+      if(offline == true){
+        try{
+          let plants = await loadCachePlants();
+          console.log(plants);
+          dispatch({type: FETCH_ITEMS_SUCCEEDED, payload: {plants}});
+        }catch(err){
+          console.log("ERROR LOADING CACHE PLANTS");
+        }
+        return;
+      }
       if(!token?.trim()){
         return;
       }
@@ -239,13 +248,17 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
         dispatch({type: FETCH_ITEMS_STARTED})
         const plants = await getPlantsFromServer(token);
         if(!canceled){
-          dispatch({type: FETCH_ITEMS_SUCCEEDED, payload: {plants}})
+          dispatch({type: FETCH_ITEMS_SUCCEEDED, payload: {plants}});
+          cachePlants(plants);
         }
+        console.log(plants);
       } catch(error){
+        let plants = await loadCachePlants();
+          console.log("GATA IN EROARE");
+          if(!canceled){
+            dispatch({type: FETCH_ITEMS_SUCCEEDED, payload: {plants}});
+          }
         console.log("EROARE MARE");
-        if(error.response.status == 401){
-          refresh && refresh();
-        }
         console.log("failed");
         console.log(error);
         dispatch({type: FETCH_ITEMS_FAILED, payload: {error}})

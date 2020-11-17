@@ -9,13 +9,18 @@ interface LoginState{
     password?: string;
 }
 
-export const Login: React.FC<RouteComponentProps> = () => {
-    const { isAuthenticated, isAuthenticating, login, authenticationError} = useContext(AuthContext);
+export const Login: React.FC<RouteComponentProps> = ( {history} ) => {
+    const { isAuthenticated, isAuthenticating, login, authenticationError, goOffline} = useContext(AuthContext);
     const [state, setState] = useState<LoginState>({});
     const {username, password} = state;
     const handleLogin = () => {
         console.log("Login started");
         login?.(username, password);
+    }
+    const handleOffline = () => {
+        console.log("Click on go offline");
+        goOffline?.();
+        history.push("/");
     }
     if(isAuthenticated){
         return <Redirect to={{ pathname: '/'}}/>
@@ -65,7 +70,10 @@ export const Login: React.FC<RouteComponentProps> = () => {
                             </IonItem>
                             <IonLoading isOpen={isAuthenticating}/>
                                 {authenticationError && (
-                                <div>{authenticationError.message || 'Failed to authenticate the user'}</div>
+                                <div>
+                                    {authenticationError.message || 'Failed to authenticate the user'}
+                                    <IonButton onClick={handleOffline}>You can still go offline</IonButton>
+                                </div>
                                 )}
                         </IonCol>
                     </IonRow>
