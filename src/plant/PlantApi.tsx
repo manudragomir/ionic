@@ -95,7 +95,7 @@ export const filterPlantsFromServer: (token: string, type: string, page?: number
 }
 
 export const cachePlants: (plants: PlantProps[]) => void = async (plants) => {
-    await Storage.clear();
+   // await Storage.clear();
     plants.map(async plant => {
         await Storage.set({
             key: JSON.stringify(plant._id),

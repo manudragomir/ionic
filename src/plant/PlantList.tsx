@@ -57,6 +57,8 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
             }
         }
         else{
+            console.log("HEI");
+            console.log(plants);
             setMyPlants(plants);
             console.log(plants);
         }
