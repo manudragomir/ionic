@@ -38,11 +38,9 @@ export function storeToken(token: string) {
   console.log("stored");
 }
 
-export function unstoreToken(){
+export function unstoreAll(){
   (async() => {
-    await Storage.remove({
-      key: 'token',
-    })
+    await Storage.clear();
   })();
   console.log("unstored");
 }

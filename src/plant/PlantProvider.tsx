@@ -234,6 +234,7 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
         try{
           let plants = await loadCachePlants();
           console.log(plants);
+          plants = plants.filter(x => x !== undefined);
           dispatch({type: FETCH_ITEMS_SUCCEEDED, payload: {plants}});
         }catch(err){
           console.log("ERROR LOADING CACHE PLANTS");

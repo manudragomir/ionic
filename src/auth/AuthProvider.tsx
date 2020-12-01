@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import PropTypes from 'prop-types';
 import { login as loginApi } from './AuthApi'
-import { storeToken, loadToken, unstoreToken } from './AuthApi'
+import { storeToken, loadToken, unstoreAll } from './AuthApi'
+import { useNetwork } from '../core/NetworkStatus'
 
 
 type LoginFn = (username?: string, password?: string) => void;
@@ -19,7 +20,6 @@ export interface AuthState{
     token: string;
     refresh?: () => void;
     offline: boolean;
-    goOffline?: LogoutFn;
 }
 
 const initialState: AuthState = {
@@ -40,10 +40,15 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
     const [state, setState] = useState<AuthState>(initialState);
     const [refresher, setRefresher] = useState<boolean>(false);
-    const { isAuthenticated, isAuthenticating, authenticationError, pendingAuthentication, token, offline } = state;
+    const [offline, setOffline] = useState<boolean>(false);
+    const { networkStatus } = useNetwork();
+    const { isAuthenticated, isAuthenticating, authenticationError, pendingAuthentication, token } = state;
     const login = useCallback<LoginFn>(loginCallback, []);
     const logout = useCallback<LogoutFn>(logoutCallback, []);
-    const goOffline = useCallback<LogoutFn>(goOfflineCallback, []);
+
+    useEffect( () => {
+        setOffline(!networkStatus.connected)
+    }, [networkStatus]);
     
     function refresh(): void{
         // unstoreToken();
@@ -57,7 +62,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
 
     useEffect(authenticationEffect, [pendingAuthentication]);
 
-    const value = { isAuthenticated, login, logout, isAuthenticating, authenticationError, token, refresh, offline, goOffline};
+    const value = { isAuthenticated, login, logout, isAuthenticating, authenticationError, token, refresh, offline};
 
     useEffect(loadTokenEffect, []);
 
@@ -66,14 +71,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
             {children}
         </AuthContext.Provider>
     )
-
-    function goOfflineCallback(): void{
-        console.log("ma duc offline auth provider");
-        setState({
-            ...state,
-            offline: true
-        });
-    }
 
     function loginCallback(username?: string, password?: string): void {
         console.log('login now');
@@ -92,19 +89,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
             isAuthenticated: false,
             token: ''
         });
-        destroyToken();
+        destroyAll();
     }
 
-    function destroyToken(){
+    function destroyAll(){
         let canceled = false;
-        removeToken();
+        removeAll();
         return () => {
             canceled = true;
         }
-        async function removeToken(){
+        async function removeAll(){
             try{
-                console.log('remove token');
-                await unstoreToken();
+                console.log('remove all');
+                await unstoreAll();
                 if(canceled){
                     return;
                 }
@@ -153,11 +150,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
                     return;
                 }
                 console.log(error);
-                setState({
-                    ...state,
-                    authenticationError: error,
-                    isAuthenticating: false
-                });
             }
         }
     }

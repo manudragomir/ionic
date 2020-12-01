@@ -123,7 +123,7 @@ export const loadCachePlants: () => Promise<any[]> = async () => {
     const {keys} = await Storage.keys();
     let plants = await Promise.all(keys.map(async (key) => {
         if(key != 'token'){
-            console.log(await getValue(key));
+            console.log(key);
             return await getValue(key);
         }
     }));

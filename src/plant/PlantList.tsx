@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react'
-import {IonContent, IonFabButton, IonHeader, IonLabel, IonPage, IonTitle, IonToolbar, IonFab, IonIcon, IonLoading, IonList, IonButton, IonSelect, IonSelectOption, IonSearchbar, IonInfiniteScroll, IonInfiniteScrollContent} from '@ionic/react'
+import {IonContent, IonFabButton, IonHeader, IonLabel, IonPage, IonTitle, IonToolbar, IonFab, IonIcon, IonLoading, IonList, IonButton, IonSelect, IonSelectOption, IonSearchbar, IonInfiniteScroll, IonInfiniteScrollContent, IonFooter} from '@ionic/react'
 import PlantItem from './PlantItem'
 import { PlantContext } from './PlantProvider'
 import { add } from 'ionicons/icons';
@@ -17,16 +17,37 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
     const [ myPlants, setMyPlants] = useState<PlantProps[] | undefined>(plants);
     const [ searchName, setSearchName] = useState<string | undefined>(undefined);
     const [ disableInfiniteScroll, setDisableInfiniteScroll] = useState<boolean>(false);
+    const [ networkMessage, setNetworkMessage] = useState<string>("unknown");
+
+    useEffect( () => {
+        if(offline == true){
+            setNetworkMessage("OFFLINE :(");
+            setMyPlants(plants);
+            setDisableInfiniteScroll(true);
+        }
+        else{
+            setNetworkMessage("ONLINE :)");
+            setDisableInfiniteScroll(false);
+            setPage(0);
+        }
+
+        if(offline == false && types !== undefined){
+            setCurrTypes(types);
+        }
+    }, [offline]);
 
     async function getNextBatch($event: CustomEvent<void>) {
         if(offline == false){
+            console.log("TRY TO GET NEXT BATCH");
             filterPlants?.(filter, page, limit).then( (filteredPlants) => {
                 if(filteredPlants.length == 0){
+                    console.log("WHAT");
                     setDisableInfiniteScroll(true);
                 }
                 else{
                     setMyPlants(myPlants?.concat(filteredPlants));
                     if(filteredPlants.length < limit){
+                        console.log("WHAT");
                         setDisableInfiniteScroll(true);
                     }
                     let nextPage = page + 1;
@@ -36,15 +57,6 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
             ($event.target as HTMLIonInfiniteScrollElement).complete();
         }
     }
-
-    useEffect(() => {
-        if(offline == false && types !== undefined){
-            setCurrTypes(types);
-        }
-        if(offline == true){
-            setDisableInfiniteScroll(true);
-        }
-    }, []);
 
     useEffect( () => {
         if(offline == false){
@@ -57,18 +69,12 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
             }
         }
         else{
-            console.log("HEI");
             console.log(plants);
             setMyPlants(plants);
             console.log(plants);
         }
-    }, [filter, plants]);
+    }, [filter, plants, offline]);
 
-    useEffect( () => {
-        if(offline == true){
-            setMyPlants(plants);
-        }
-    }, [plants, offline]);
     return (
         <IonPage>
             <IonHeader>
@@ -139,6 +145,14 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
                     </IonFabButton>
                 </IonFab>
             </IonContent>
+
+            <IonFooter>
+                        <IonToolbar>
+                            <IonTitle>
+                                NETWORK STATUS: {networkMessage}
+                            </IonTitle>
+                        </IonToolbar>
+            </IonFooter>
 
         </IonPage>
     );
