@@ -75,6 +75,10 @@ const SAVE_LOCAL_SUCCEEDED = 'SAVE_LOCAL_SUCCEEDED';
 const EDIT_LOCAL_SUCCEEDED = 'EDIT_LOCAL_SUCCEEDED';
 const DELETE_LOCAL_SUCCEEDED = 'DELETE_LOCAL_SUCCEEDED';
 
+const MERGE_SERVER_STARTED = 'MERGE_SERVER_STARTED';
+const MERGE_SERVER_SUCCEEDED = 'MERGE_SERVER_SUCCEEDED';
+const MERGE_SERVER_FAILED = 'MERGE_SERVER_FAILED';
+
 const FILTER_GOOD = 'FILTER_GOOD';
 const FILTER_ERROR = 'FILTER_ERROR';
 
@@ -178,7 +182,7 @@ const reducer: (state: PlantsState, action: ActionProps) => PlantsState =
         if(indexPlant === -1){
           return state;
         }
-        
+
         plants.splice(indexPlant, 1);
         return {...state, plants, deleting: false, deletingError: false}
       }
@@ -188,7 +192,14 @@ const reducer: (state: PlantsState, action: ActionProps) => PlantsState =
       case FILTER_GOOD:{
         return {...state, filterError: null};
       }
-        
+      case MERGE_SERVER_STARTED:{
+        console.log("START MERGING");
+        return {...state};
+      }
+      case MERGE_SERVER_SUCCEEDED:{
+        console.log("DONE MERGING");
+        return {...state};
+      }        
       default:
         return state;
     }
@@ -204,7 +215,8 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
   const { token, refresh, offline } = useContext(AuthContext);
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  useEffect(getPlants, [token, offline]);
+  useEffect(getPlants, [token]);
+  useEffect(mergeWithServer, [token, offline]);
   useEffect(wsEffect, [token]);
   useEffect(getPlantTypes, [token]);
 
@@ -302,6 +314,38 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
           console.log("failed");
           console.log(error);
           dispatch({type: FETCH_ITEMS_FAILED, payload: {error}});
+      }
+    }
+
+  }
+
+  function mergeWithServer(){
+    if(offline == true){
+      return;
+    }
+    console.log("START SYNC PLANTS");
+    let canceled = false;
+    syncPlants();
+
+    return () => {
+      canceled = true;
+    }
+
+    async function syncPlants() {
+      console.log("SYNCING...");
+      if(!token?.trim()){
+        return;
+      }
+      try{
+        let serverPlants = await getPlantsFromServer(token);
+        dispatch({type: MERGE_SERVER_STARTED});
+        await merge(serverPlants);
+        dispatch({type: MERGE_SERVER_SUCCEEDED});
+      } catch(error){
+          if(!canceled){
+            
+          }
+          dispatch({type: MERGE_SERVER_FAILED, payload: {error}});
       }
     }
 
@@ -437,6 +481,25 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
       dispatch({ type: DELETE_LOCAL_SUCCEEDED, payload: { plant: deletedPlant } });
     } catch (error) {
       dispatch({ type: DELETE_ITEM_FAILED, payload: { error } });
+    }
+  }
+
+  async function merge(serverPlants: PlantProps[]){
+    if(plants != undefined){
+      const localPlants = [...plants];
+      localPlants?.forEach((plant) => {
+        if(plant.loaded != undefined){
+          let indexPlant = serverPlants.findIndex(it => it._id === plant._id);
+          if(indexPlant === -1){
+            delete plant.loaded;
+            savePlantCallback(plant);
+          }
+          else{
+            delete plant.loaded;
+            editPlantCallback(plant);
+          }
+        }
+      });
     }
   }
 };
