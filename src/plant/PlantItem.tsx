@@ -12,17 +12,7 @@ interface PlantPropsExtended extends PlantProps{
   onEdit: (_id?: string) => void;
 }
 
-const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type, onEdit, loaded }) => {
-  const [iconString, setIconString] = useState<string>(alertOutline);
-  useEffect(() => {
-    if(loaded == undefined){
-      setIconString(checkmarkOutline);
-    }
-    else{
-      setIconString(alertOutline);
-    }
-  }, [loaded]);
-
+const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type, onEdit, loaded, version }) => {
   return (
     <IonItem style={{height: 200}}>
       <IonIcon icon={leafOutline} slot="start"></IonIcon>
@@ -30,9 +20,11 @@ const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type,
         <h2>{name}</h2>
         <p>{description}</p>
         <p>{type}</p>
+        <p>{version}</p>
       </IonLabel>
       <IonButton slot="end">
-        <IonIcon icon={iconString}/>
+        {loaded == true && <IonIcon icon={alertOutline}/>}
+        {loaded == undefined && <IonIcon icon={checkmarkOutline}/>}
       </IonButton>
     </IonItem>
   );

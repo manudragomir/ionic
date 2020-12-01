@@ -33,7 +33,7 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
         }
         else{
             setNetworkMessage("ONLINE :)");
-            setDisableInfiniteScroll(false);
+            setDisableInfiniteScroll(true);
             setPage(0);
         }
 
@@ -66,7 +66,7 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
 
     useEffect( () => {
         if(offline == false){
-            if(filter == undefined){
+            if(filter == undefined || filter == 'any'){
                 setMyPlants(plants);
             }
             else{
@@ -124,8 +124,9 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
                     <IonList>
                         {myPlants
                             .filter(plant => searchName == undefined || plant.name.indexOf(searchName) >= 0)
-                            .map(({_id, name, description, type, loaded}) => 
+                            .map(({_id, name, description, type, loaded, version}) => 
                             <PlantItem key={_id} name={name} description={description} type={type} loaded={loaded}
+                                        version={version}
                                         onEdit={() => {history.push(`/plants/${_id}`)}} />) }
                     </IonList>
                     )}

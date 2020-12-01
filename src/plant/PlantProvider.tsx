@@ -139,12 +139,19 @@ const reducer: (state: PlantsState, action: ActionProps) => PlantsState =
       case SERVER_ITEM_INCOMING:{
         const plants = [...(state.plants || [])];
         const plantAdded = payload.item;
+
+        let indexPlant = plants.findIndex(it => it._id === plantAdded._id);
+        if(indexPlant !== -1){
+          return state;
+        }
+
         plants.push(plantAdded);
         return {...state, plants}
       }
       case SERVER_ITEM_UPDATED:{
         const plants = [...(state.plants || [])];
         const plantUpdated = payload.item;
+        
         let indexPlant = plants.findIndex(it => it._id === plantUpdated._id);
         if(indexPlant === -1){
           return state;
@@ -217,7 +224,7 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
 
   useEffect(getPlants, [token]);
   useEffect(mergeWithServer, [token, offline]);
-  useEffect(wsEffect, [token]);
+  useEffect(wsEffect, [token, offline]);
   useEffect(getPlantTypes, [token]);
 
   const { plants, fetching, fetchingError, saving, savingError, deleting, refreshTypes, types, filterError  } = state;
@@ -410,30 +417,32 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
   }
 
   function wsEffect() {
-    let canceled = false;
-    let closeWebSocket: () => void;
-    if(token?.trim()){
-      closeWebSocket = newWebSocket(token, message => {
-        if (canceled) {
-          return;
-        }
-        const { event, payload:  item } = message;
-        console.log(`ws message, item ${event}`);
-        if (event === 'created') {
-          dispatch({ type: SERVER_ITEM_INCOMING, payload: { item } });
-        }
-        else if(event === 'updated'){
-          dispatch({type: SERVER_ITEM_UPDATED, payload: { item }});
-        }
-        else if(event === 'deleted'){
-          dispatch({type: SERVER_ITEM_REMOVING, payload: { item }});
-        }
-      });
-    }
-    return () => {
-      console.log('wsEffect - disconnecting');
-      canceled = true;
-      closeWebSocket?.();
+    if(offline == false){
+      let canceled = false;
+      let closeWebSocket: () => void;
+      if(token?.trim()){
+        closeWebSocket = newWebSocket(token, message => {
+          if (canceled) {
+            return;
+          }
+          const { event, payload:  item } = message;
+          console.log(`ws message, item ${event}`);
+          if (event === 'created') {
+            dispatch({ type: SERVER_ITEM_INCOMING, payload: { item } });
+          }
+          else if(event === 'updated'){
+            dispatch({type: SERVER_ITEM_UPDATED, payload: { item }});
+          }
+          else if(event === 'deleted'){
+            dispatch({type: SERVER_ITEM_REMOVING, payload: { item }});
+          }
+        });
+      }
+      return () => {
+        console.log('wsEffect - disconnecting');
+        canceled = true;
+        closeWebSocket?.();
+      }
     }
   }
 

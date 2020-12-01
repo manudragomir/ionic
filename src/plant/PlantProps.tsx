@@ -4,4 +4,5 @@ export interface PlantProps{
     description: string;
     type: string;
     loaded?: boolean;
+    version?: number;
 }

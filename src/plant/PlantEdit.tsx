@@ -18,7 +18,7 @@ import {
 import { PlantContext } from './PlantProvider';
 import { RouteComponentProps } from 'react-router';
 import { PlantProps } from './PlantProps';
-import { cloudUploadOutline, trashOutline } from 'ionicons/icons';
+import { cloudUploadOutline, exitOutline, trashOutline } from 'ionicons/icons';
 
 
 interface PlantEditProps extends RouteComponentProps<{id: string;}> {}
@@ -48,6 +48,10 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
     editPlant && editPlant(editedPlant).then(() => history.goBack());
   };
 
+  const handleExit = () => {
+    history.goBack();
+  }
+
   return (
     <IonPage>
       <IonHeader>
@@ -56,7 +60,11 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
           <IonButtons slot="end">
             <IonButton onClick={handleEdit}>
                 <IonIcon icon={cloudUploadOutline} slot="start"></IonIcon>
-              Done editing
+              Save
+            </IonButton>
+            <IonButton onClick={handleExit}>
+                <IonIcon icon={exitOutline} slot="start"></IonIcon>
+              Exit
             </IonButton>
           </IonButtons>
         </IonToolbar>
