@@ -8,7 +8,7 @@ import { AuthContext } from '../auth';
 import { PlantProps } from './PlantProps';
 
 const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
-    const { plants, fetching, fetchingError, types, filterPlants } = useContext(PlantContext);
+    const { plants, fetching, fetchingError, types, filterPlants, filterError } = useContext(PlantContext);
     const { logout, offline } = useContext(AuthContext);
     const limit = 3;
     const [ page, setPage ] = useState<number>(0);
@@ -18,6 +18,12 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
     const [ searchName, setSearchName] = useState<string | undefined>(undefined);
     const [ disableInfiniteScroll, setDisableInfiniteScroll] = useState<boolean>(false);
     const [ networkMessage, setNetworkMessage] = useState<string>("unknown");
+
+    useEffect( () => {
+        if(filterError != null){
+            setMyPlants(plants);
+        }
+    }, [filterError]);
 
     useEffect( () => {
         if(offline == true){
@@ -118,9 +124,9 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
                     <IonList>
                         {myPlants
                             .filter(plant => searchName == undefined || plant.name.indexOf(searchName) >= 0)
-                            .map(({_id, name, description, type}) => 
-                            <PlantItem key={_id} name={name} description={description} type={type}
-                                        onEdit={() => {history.push(`/plants/${_id}`)}} />)}
+                            .map(({_id, name, description, type, loaded}) => 
+                            <PlantItem key={_id} name={name} description={description} type={type} loaded={loaded}
+                                        onEdit={() => {history.push(`/plants/${_id}`)}} />) }
                     </IonList>
                     )}
                  <IonInfiniteScroll threshold="100px" 

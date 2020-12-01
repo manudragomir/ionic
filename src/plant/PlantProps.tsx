@@ -3,4 +3,5 @@ export interface PlantProps{
     name: string;
     description: string;
     type: string;
+    loaded?: boolean;
 }

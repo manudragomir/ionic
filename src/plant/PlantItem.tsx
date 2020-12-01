@@ -1,6 +1,6 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { IonButton, IonIcon, IonItem, IonLabel } from '@ionic/react';
-import { leafOutline, closeCircleOutline } from 'ionicons/icons';
+import { leafOutline, alertOutline, checkmarkOutline } from 'ionicons/icons';
 import { PlantProps } from './PlantProps'
 
 // interface PlantPropsMoreExtended extends PlantPropsExtended
@@ -12,7 +12,17 @@ interface PlantPropsExtended extends PlantProps{
   onEdit: (_id?: string) => void;
 }
 
-const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type, onEdit }) => {
+const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type, onEdit, loaded }) => {
+  const [iconString, setIconString] = useState<string>(alertOutline);
+  useEffect(() => {
+    if(loaded == undefined){
+      setIconString(checkmarkOutline);
+    }
+    else{
+      setIconString(alertOutline);
+    }
+  }, [loaded]);
+
   return (
     <IonItem style={{height: 200}}>
       <IonIcon icon={leafOutline} slot="start"></IonIcon>
@@ -22,7 +32,7 @@ const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type,
         <p>{type}</p>
       </IonLabel>
       <IonButton slot="end">
-        <IonIcon icon={closeCircleOutline}></IonIcon>
+        <IonIcon icon={iconString}/>
       </IonButton>
     </IonItem>
   );

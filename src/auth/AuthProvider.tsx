@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
     const logout = useCallback<LogoutFn>(logoutCallback, []);
 
     useEffect( () => {
-        setOffline(!networkStatus.connected)
+        setOffline(!networkStatus.connected);
     }, [networkStatus]);
     
     function refresh(): void{

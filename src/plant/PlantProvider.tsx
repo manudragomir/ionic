@@ -1,7 +1,8 @@
 import React, { useCallback, useContext } from 'react';
 import { useEffect, useReducer, useState } from 'react';
-import { cachePlants, loadCachePlants, deletePlantFromServer, editPlantOnServer, fetchPlantTypesFromServer, filterPlantsFromServer, getPlantsFromServer, newWebSocket, savePlantOnServer } from './PlantApi';
+import { deletePlantFromServer, editPlantOnServer, fetchPlantTypesFromServer, filterPlantsFromServer, getPlantsFromServer, newWebSocket, savePlantOnServer } from './PlantApi';
 import { PlantProps } from './PlantProps'
+import {cachePlants, loadCachePlants, savePlantOnCache, editPlantOnCache, deletePlantFromCache} from './PlantCache'
 import PropTypes from 'prop-types';
 import { AuthContext } from '../auth';
 
@@ -19,6 +20,7 @@ export interface PlantsState{
   fetchingError?: Error,
   savingError?: Error,
   deletingError?: Error,
+  filterError?: Error,
 
   addPlant?: SavePlantHeader,
   deletePlant?: DeletePlantHeader,
@@ -39,6 +41,7 @@ const initialState: PlantsState = {
   fetchingError: undefined,
   savingError: undefined,
   deletingError: undefined,
+  filterError: undefined,
   refreshTypes: true,
   types: undefined
 };
@@ -67,6 +70,13 @@ const SERVER_ITEM_UPDATED = 'SERVER_ITEM_UPDATED';
 
 const FETCH_TYPES = 'FETCH_TYPES';
 const FETCH_TYPES_ERROR = 'FETCH_TYPES_ERROR';
+
+const SAVE_LOCAL_SUCCEEDED = 'SAVE_LOCAL_SUCCEEDED';
+const EDIT_LOCAL_SUCCEEDED = 'EDIT_LOCAL_SUCCEEDED';
+const DELETE_LOCAL_SUCCEEDED = 'DELETE_LOCAL_SUCCEEDED';
+
+const FILTER_GOOD = 'FILTER_GOOD';
+const FILTER_ERROR = 'FILTER_ERROR';
 
 const reducer: (state: PlantsState, action: ActionProps) => PlantsState = 
   (state, {type, payload}) => {
@@ -145,6 +155,39 @@ const reducer: (state: PlantsState, action: ActionProps) => PlantsState =
       case FETCH_TYPES_ERROR:{
         return {...state};
       }
+      case SAVE_LOCAL_SUCCEEDED:{
+        let plants = state.plants;
+        plants?.push(payload.plant);
+        return {...state, plants, saving: false, savingError: null};
+      }
+      case EDIT_LOCAL_SUCCEEDED:{
+        const plants = [...(state.plants || [])];
+        const plantUpdated = payload.plant;
+        let indexPlant = plants.findIndex(it => it._id === plantUpdated._id);
+        plants[indexPlant] = plantUpdated;
+        return {...state, plants, saving: false, savingError: null};
+      }
+      case DELETE_LOCAL_SUCCEEDED:{
+        const plants = [...(state.plants || [])];
+        const plantRemoved = payload.plant;
+        
+        console.log("plants" + plants.toString());
+        console.log("plantRemoved" + plantRemoved.toString());
+
+        let indexPlant = plants.findIndex(it => it._id === plantRemoved._id);
+        if(indexPlant === -1){
+          return state;
+        }
+        
+        plants.splice(indexPlant, 1);
+        return {...state, plants, deleting: false, deletingError: false}
+      }
+      case FILTER_ERROR:{
+        return {...state, filterError: payload.error};
+      }
+      case FILTER_GOOD:{
+        return {...state, filterError: null};
+      }
         
       default:
         return state;
@@ -165,15 +208,15 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
   useEffect(wsEffect, [token]);
   useEffect(getPlantTypes, [token]);
 
-  const { plants, fetching, fetchingError, saving, savingError, deleting, refreshTypes, types  } = state;
+  const { plants, fetching, fetchingError, saving, savingError, deleting, refreshTypes, types, filterError  } = state;
 
 
-  const addPlant = useCallback<SavePlantHeader>(savePlantCallback, [token]);
-  const deletePlant = useCallback<DeletePlantHeader>(deletePlantCallback, [token]);
-  const editPlant = useCallback<SavePlantHeader>(editPlantCallback, [token]);
+  const addPlant = useCallback<SavePlantHeader>(savePlantCallback, [token, offline]);
+  const deletePlant = useCallback<DeletePlantHeader>(deletePlantCallback, [token, offline]);
+  const editPlant = useCallback<SavePlantHeader>(editPlantCallback, [token, offline]);
   const filterPlants = useCallback<FilterPlantsHeader>(filterPlantsCallback, [token]);
 
-  const sharedData = { plants, fetching, fetchingError, saving, savingError, deleting, addPlant, deletePlant, editPlant, filterPlants, types, refreshTypes }
+  const sharedData = { plants, fetching, fetchingError, saving, savingError, deleting, addPlant, deletePlant, editPlant, filterPlants, types, refreshTypes, filterError }
 
   return (
     <PlantContext.Provider value={sharedData}>
@@ -186,9 +229,10 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
     try {
       console.log("PLANT PROVIDER" + page + limit);
       const plants = await filterPlantsFromServer(token, type, page, limit);
+      dispatch({type: FILTER_GOOD, payload: {plants}});
       return plants;
     } catch (error) {
-      console.log("EROARE MARE");
+      dispatch({type: FILTER_ERROR, payload: {error}});
       return null;
     }
   }
@@ -230,21 +274,14 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
 
     async function fetchPlants() {
       console.log("FETCH");
-      if(offline == true){
-        try{
-          let plants = await loadCachePlants();
-          console.log(plants);
-          plants = plants.filter(x => x !== undefined);
-          dispatch({type: FETCH_ITEMS_SUCCEEDED, payload: {plants}});
-        }catch(err){
-          console.log("ERROR LOADING CACHE PLANTS");
-        }
-        return;
-      }
       if(!token?.trim()){
         return;
       }
-      try{
+      try{        
+        if(offline == true){
+          await fetchOffline();
+          return;
+        }
         console.log("fetch Items started");
         dispatch({type: FETCH_ITEMS_STARTED})
         const plants = await getPlantsFromServer(token);
@@ -254,15 +291,17 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
         }
         console.log(plants);
       } catch(error){
-        let plants = await loadCachePlants();
-          console.log("GATA IN EROARE");
+          if(error.message=="Network Error"){
+            await fetchOffline();
+            return;
+          }
           if(!canceled){
             dispatch({type: FETCH_ITEMS_SUCCEEDED, payload: {plants}});
           }
-        console.log("EROARE MARE");
-        console.log("failed");
-        console.log(error);
-        dispatch({type: FETCH_ITEMS_FAILED, payload: {error}})
+          console.log("EROARE MARE");
+          console.log("failed");
+          console.log(error);
+          dispatch({type: FETCH_ITEMS_FAILED, payload: {error}});
       }
     }
 
@@ -270,11 +309,21 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
 
   async function savePlantCallback(plant: PlantProps) {
     try {
+      console.log("OFF" + offline);
       dispatch({ type: SAVE_ITEM_STARTED });
+      if(offline == true){
+        await addOffline(plant);
+        return;
+      }
       const newPlant = await savePlantOnServer(token, plant);
       console.log(newPlant);
       dispatch({ type: SAVE_ITEM_SUCCEEDED, payload: { plant: newPlant } });
     } catch (error) {
+      if(error.message=="Network Error"){
+        await addOffline(plant);
+        return;
+      }
+      console.log(error.status);
       dispatch({ type: SAVE_ITEM_FAILED, payload: { error } });
     }
   }
@@ -282,10 +331,17 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
   async function editPlantCallback(plant: PlantProps) {
     try {
       dispatch({ type: SAVE_ITEM_STARTED });
+      if(offline == true){
+        await editOffline(plant);
+        return;
+      }
       const updatedPlant = await editPlantOnServer(token, plant);
       dispatch({ type: SAVE_ITEM_SUCCEEDED, payload: { plant: updatedPlant } });
     } catch (error) {
-      console.log("HEI");
+      if(error.message=="Network Error"){
+        await editOffline(plant);
+        return;
+      }
       dispatch({ type: SAVE_ITEM_FAILED, payload: { error } });
     }
   }
@@ -293,10 +349,18 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
   async function deletePlantCallback(_id: String){
     try {
       dispatch({ type: DELETE_ITEM_STARTED });
+      if(offline == true){
+        await deleteOffline(_id);
+        return;
+      }
       const deletedPlant = await deletePlantFromServer(token, _id);
       console.log(deletedPlant);
       dispatch({ type: DELETE_ITEM_SUCCEEDED, payload: { plant: deletedPlant } });
     } catch (error) {
+      if(error.message=="Network Error"){
+        await deleteOffline(_id);
+        return;
+      }
       dispatch({ type: DELETE_ITEM_FAILED, payload: { error } });
     }
   }
@@ -328,4 +392,53 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
       closeWebSocket?.();
     }
   }
+
+  async function fetchOffline() {
+    try{
+      console.log("FETCH OFFLINE PLANTS");
+      let plants = await loadCachePlants();
+      console.log(plants);
+      plants = plants.filter(x => x !== undefined);
+      dispatch({type: FETCH_ITEMS_SUCCEEDED, payload: { plants }});
+    }catch(err){
+      console.log("ERROR LOADING CACHE PLANTS");
+    }
+  }
+  
+  async function addOffline(plant: PlantProps){
+    console.log("ADD OFFLINE");
+    try {
+      dispatch({ type: SAVE_ITEM_STARTED });
+      const newPlant = await savePlantOnCache(plant);
+      console.log(newPlant);
+      dispatch({ type: SAVE_LOCAL_SUCCEEDED, payload: { plant: newPlant } });
+    } catch (error) {
+      console.log("ERROR ADDING ON");
+      dispatch({ type: SAVE_ITEM_FAILED, payload: { error } });
+    }
+  }
+  
+  async function editOffline(plant: PlantProps){
+    try {
+      dispatch({ type: SAVE_ITEM_STARTED });
+      const updatedPlant = await editPlantOnCache(plant);
+      console.log(updatedPlant);
+      dispatch({ type: EDIT_LOCAL_SUCCEEDED, payload: { plant: updatedPlant } });
+    } catch (error) {
+      dispatch({ type: SAVE_ITEM_FAILED, payload: { error } });
+    }
+  }
+  
+  async function deleteOffline(_id: String){
+    try {
+      dispatch({ type: DELETE_ITEM_STARTED });
+      const deletedPlant = await deletePlantFromCache(_id);
+      console.log(deletedPlant);
+      dispatch({ type: DELETE_LOCAL_SUCCEEDED, payload: { plant: deletedPlant } });
+    } catch (error) {
+      dispatch({ type: DELETE_ITEM_FAILED, payload: { error } });
+    }
+  }
 };
+
+
