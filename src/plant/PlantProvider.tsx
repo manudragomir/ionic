@@ -2,13 +2,17 @@ import React, { useCallback, useContext } from 'react';
 import { useEffect, useReducer, useState } from 'react';
 import { deletePlantFromServer, editPlantOnServer, fetchPlantTypesFromServer, filterPlantsFromServer, getPlantsFromServer, newWebSocket, savePlantOnServer } from './PlantApi';
 import { PlantProps } from './PlantProps'
-import {cachePlants, loadCachePlants, savePlantOnCache, editPlantOnCache, deletePlantFromCache} from './PlantCache'
+import {cachePlants, loadCachePlants, savePlantOnCache, editPlantOnCache, deletePlantFromCache, 
+        addLocalStorageConflictPlant,
+        removeLocalStorageConflictPlant,
+        getLocalStorageConflictPlant} from './PlantCache'
 import PropTypes from 'prop-types';
 import { AuthContext } from '../auth';
 
 type SavePlantHeader = (plant: PlantProps) => Promise<any>;
 type DeletePlantHeader = (_id: String) => Promise<any>;
 type FilterPlantsHeader = (type: string, page?: number, limit?: number) => Promise<any>;
+type ConflictPlantsHeader = (_id: string) => Promise<string | null>;
 
 export interface PlantsState{
   plants?: PlantProps[],
@@ -26,6 +30,7 @@ export interface PlantsState{
   deletePlant?: DeletePlantHeader,
   editPlant?: SavePlantHeader,
   filterPlants?: FilterPlantsHeader,
+  getConflict?: ConflictPlantsHeader,
 
   types?: string[],
   refreshTypes: boolean
@@ -234,14 +239,25 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
   const deletePlant = useCallback<DeletePlantHeader>(deletePlantCallback, [token, offline]);
   const editPlant = useCallback<SavePlantHeader>(editPlantCallback, [token, offline]);
   const filterPlants = useCallback<FilterPlantsHeader>(filterPlantsCallback, [token]);
+  const getConflict = useCallback<ConflictPlantsHeader>(getConflictCallback, [token, offline]);
 
-  const sharedData = { plants, fetching, fetchingError, saving, savingError, deleting, addPlant, deletePlant, editPlant, filterPlants, types, refreshTypes, filterError }
+  const sharedData = { plants, fetching, fetchingError, saving, savingError, deleting, addPlant, deletePlant, editPlant, filterPlants, types, refreshTypes, filterError, getConflict }
 
   return (
     <PlantContext.Provider value={sharedData}>
       {children}
     </PlantContext.Provider>
   )
+
+  async function getConflictCallback(_id: string){
+    try {
+      const conflictedPlants = await getConflictPlant(_id);
+      return conflictedPlants;
+    } catch (error) {
+      console.log("ERROR CONFLICT " + error);
+      return null;
+    }
+  }
 
 
   async function filterPlantsCallback(type: string, page?: number, limit?: number) {
@@ -389,6 +405,13 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
       const updatedPlant = await editPlantOnServer(token, plant);
       dispatch({ type: SAVE_ITEM_SUCCEEDED, payload: { plant: updatedPlant } });
     } catch (error) {
+      if(error.response.status == 409){
+        console.log("CONFLICT");
+        let conflictPlant = error.response.data;
+        await addConflictPlant(plant);
+        dispatch({type: SERVER_ITEM_UPDATED, payload: { item: conflictPlant }});
+        console.log(conflictPlant);
+      }
       if(error.message=="Network Error"){
         await editOffline(plant);
         return;
@@ -510,6 +533,20 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
         }
       });
     }
+  }
+
+  async function addConflictPlant(plant: PlantProps){
+    await addLocalStorageConflictPlant(plant);
+  }
+
+  async function removeConflictPlant(_id: string){
+    await removeLocalStorageConflictPlant(_id);
+  }
+
+  async function getConflictPlant(_id: string){
+    const result = await getLocalStorageConflictPlant(_id);
+    console.log(_id.toString() + result);
+    return result;
   }
 };
 

@@ -68,10 +68,29 @@ export const deletePlantFromCache: (_id: String) => Promise<(PlantProps)> = asyn
     console.log("load cache");
     const {keys} = await Storage.keys();
     let plants = await Promise.all(keys.map(async (key) => {
-        if(key != 'token'){
+        if(key != 'token' || !key.startsWith("CONFLICT")){
             console.log(key);
             return await getPlantMemoryCache(key);
         }
     }));
     return plants;
+}
+
+export const addLocalStorageConflictPlant: (plant: PlantProps) => Promise<void> = async (plant) => {
+    console.log("save conflict");
+    await Storage.remove({key: JSON.stringify(plant._id)});
+    return Storage.set({
+       key: JSON.stringify("CONFLICT" + plant._id),
+       value:  JSON.stringify(plant)
+    });
+}
+
+export const removeLocalStorageConflictPlant: (_id: string) => Promise<void> = async (_id) => {
+    console.log("remove conflict");
+    return Storage.remove({key: JSON.stringify("CONFLICT" + _id)});
+}
+
+export const getLocalStorageConflictPlant: (_id: string) => Promise<string | null> = async (_id) => {
+    console.log("get conflict");
+    return (await Storage.get({key: JSON.stringify("CONFLICT" + _id)})).value;
 }
