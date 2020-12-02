@@ -3,6 +3,7 @@ import { IonButton, IonIcon, IonItem, IonLabel } from '@ionic/react';
 import { leafOutline, alertOutline, checkmarkOutline, analyticsOutline, accessibilityOutline } from 'ionicons/icons';
 import { PlantProps } from './PlantProps'
 import { PlantContext } from './PlantProvider';
+import { AuthContext } from '../auth';
 
 // interface PlantPropsMoreExtended extends PlantPropsExtended
 // {
@@ -14,7 +15,8 @@ interface PlantPropsExtended extends PlantProps{
 }
 
 const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type, onEdit, loaded, version }) => {
-  const { getConflict } = useContext(PlantContext);
+  const { getConflict, plants } = useContext(PlantContext);
+  const { offline } = useContext(AuthContext);
   const [conflict, setConflict] = useState<boolean>(false);
   const [colorString, setColorString] = useState<string>('default');
 
@@ -29,7 +31,7 @@ const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type,
         setColorString('red');
       }
     });
-  }, [getConflict]);
+  }, [offline, getConflict, plants]);
 
   return (
     <IonItem style={{height: 200}}>

@@ -13,6 +13,7 @@ type SavePlantHeader = (plant: PlantProps) => Promise<any>;
 type DeletePlantHeader = (_id: String) => Promise<any>;
 type FilterPlantsHeader = (type: string, page?: number, limit?: number) => Promise<any>;
 type ConflictPlantsHeader = (_id: string) => Promise<string | null>;
+type ResolveConflictHeader = (_id: string) => any;
 
 export interface PlantsState{
   plants?: PlantProps[],
@@ -20,17 +21,21 @@ export interface PlantsState{
   fetching: boolean,
   saving: boolean,
   deleting: boolean,
+  resolving: boolean,
 
   fetchingError?: Error,
   savingError?: Error,
   deletingError?: Error,
   filterError?: Error,
+  resolvingError?: Error,
 
   addPlant?: SavePlantHeader,
   deletePlant?: DeletePlantHeader,
   editPlant?: SavePlantHeader,
   filterPlants?: FilterPlantsHeader,
   getConflict?: ConflictPlantsHeader,
+  pushChanges?: ResolveConflictHeader,
+  quitChanges?: ResolveConflictHeader,
 
   types?: string[],
   refreshTypes: boolean
@@ -42,13 +47,15 @@ const initialState: PlantsState = {
   fetching: false,
   saving: false,
   deleting: false,
+  resolving: false,
 
   fetchingError: undefined,
   savingError: undefined,
   deletingError: undefined,
   filterError: undefined,
   refreshTypes: true,
-  types: undefined
+  types: undefined,
+  resolvingError: undefined,
 };
 
 
@@ -86,6 +93,10 @@ const MERGE_SERVER_FAILED = 'MERGE_SERVER_FAILED';
 
 const FILTER_GOOD = 'FILTER_GOOD';
 const FILTER_ERROR = 'FILTER_ERROR';
+
+const RESOLVE_CONFLICT_STARTED = 'RESOLVE_CONFLICT_STARTED';
+const RESOLVE_CONFLICT_SUCCEEDED = 'RESOLVE_CONFLICT_SUCCEEDED';
+const RESOLVE_CONFLICT_FAILED = 'RESOLVE_CONFLICT_FAILED';
 
 const reducer: (state: PlantsState, action: ActionProps) => PlantsState = 
   (state, {type, payload}) => {
@@ -211,7 +222,16 @@ const reducer: (state: PlantsState, action: ActionProps) => PlantsState =
       case MERGE_SERVER_SUCCEEDED:{
         console.log("DONE MERGING");
         return {...state};
-      }        
+      }    
+      case RESOLVE_CONFLICT_STARTED:{
+        return {...state, resolving: true, resolvingError: undefined};
+      } 
+      case RESOLVE_CONFLICT_SUCCEEDED:{
+        return {...state, resolving: false, resolvingError: undefined, savingError: undefined};
+      }
+      case RESOLVE_CONFLICT_FAILED:{
+        return {...state, resolving: false, resolvingError: payload.error};
+      }  
       default:
         return state;
     }
@@ -232,7 +252,8 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
   useEffect(wsEffect, [token, offline]);
   useEffect(getPlantTypes, [token]);
 
-  const { plants, fetching, fetchingError, saving, savingError, deleting, refreshTypes, types, filterError  } = state;
+  const { plants, fetching, fetchingError, saving, savingError, 
+          deleting, refreshTypes, types, filterError, resolving, resolvingError  } = state;
 
 
   const addPlant = useCallback<SavePlantHeader>(savePlantCallback, [token, offline]);
@@ -240,14 +261,55 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
   const editPlant = useCallback<SavePlantHeader>(editPlantCallback, [token, offline]);
   const filterPlants = useCallback<FilterPlantsHeader>(filterPlantsCallback, [token]);
   const getConflict = useCallback<ConflictPlantsHeader>(getConflictCallback, [token, offline]);
+  const pushChanges = useCallback<ResolveConflictHeader>(pushChangesCallback, [token, offline, plants]);
+  const quitChanges = useCallback<ResolveConflictHeader>(quitChangesCallback, [token, offline, plants]);
 
-  const sharedData = { plants, fetching, fetchingError, saving, savingError, deleting, addPlant, deletePlant, editPlant, filterPlants, types, refreshTypes, filterError, getConflict }
+  const sharedData = { plants, fetching, fetchingError, saving, savingError, deleting, addPlant, 
+                      deletePlant, editPlant, filterPlants, types, refreshTypes, filterError, getConflict,
+                      pushChanges, quitChanges, resolving, resolvingError }
 
   return (
     <PlantContext.Provider value={sharedData}>
       {children}
     </PlantContext.Provider>
   )
+
+  async function pushChangesCallback(_id: string){
+    try {
+      dispatch({type: RESOLVE_CONFLICT_STARTED});
+      let conflictedPlant = await getConflictPlant(_id);
+      console.log("CONFLICT IN PUSH " + conflictedPlant);
+
+      let dbIndex = state.plants?.findIndex(it => it._id === _id);
+      if(conflictedPlant == null || dbIndex === -1){
+        dispatch({type: RESOLVE_CONFLICT_FAILED, payload: {"error": "conflict already resolved"}});
+        return;
+      }
+
+      else{
+        await removeLocalStorageConflictPlant(_id);
+        let version = state.plants![dbIndex!].version;
+        let editedPlant = JSON.parse(conflictedPlant);
+        editedPlant.version = version;
+        await editPlantCallback(editedPlant);
+        dispatch({type: RESOLVE_CONFLICT_SUCCEEDED});
+      }
+    } catch (error) {
+      console.log("ERROR CONFLICT " + error);
+      dispatch({type: RESOLVE_CONFLICT_FAILED, payload: {error}});
+    }
+  }
+
+  async function quitChangesCallback(_id: string){
+    try {
+      dispatch({type: RESOLVE_CONFLICT_STARTED});
+      await removeLocalStorageConflictPlant(_id);
+      dispatch({type: RESOLVE_CONFLICT_SUCCEEDED});
+    } catch (error) {
+      console.log("ERROR CONFLICT " + error);
+      dispatch({type: RESOLVE_CONFLICT_FAILED, payload: {error}});
+    }
+  }
 
   async function getConflictCallback(_id: string){
     try {
@@ -545,7 +607,6 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
 
   async function getConflictPlant(_id: string){
     const result = await getLocalStorageConflictPlant(_id);
-    console.log(_id.toString() + result);
     return result;
   }
 };
