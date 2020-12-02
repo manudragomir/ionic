@@ -3,14 +3,23 @@ import { PlantProps } from './PlantProps';
 import { config, baseUrl, withoutHttpUrl, authConfig } from '../core'
 
 import { planetSharp } from 'ionicons/icons';
+import { authOptimisedConfig, loadDate, storeDate } from '../core/OptimisedCache';
 
 const plantUrl = `http://${withoutHttpUrl}/api/plant`;
 
-export const getPlantsFromServer: (token: string) => Promise<PlantProps[]> = token => {
+export const getPlantsFromServer: (token: string) => Promise<PlantProps[]> = async token => {   
+    let localLastDate = await loadDate();
     return axios
-        .get(plantUrl, authConfig(token))
+        .get(plantUrl, authOptimisedConfig(token, localLastDate!))
         .then(res => {
             console.log('plants got with success');
+            
+            //store current data
+            if(res.headers && res.headers["last-modified"]){
+                let lastData = res.headers["last-modified"];
+                storeDate(lastData);
+            }
+
             return Promise.resolve(res.data);
         })
         .catch(err => {

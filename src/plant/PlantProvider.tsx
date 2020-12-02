@@ -384,11 +384,16 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
         const plants = await getPlantsFromServer(token);
         if(!canceled){
           dispatch({type: FETCH_ITEMS_SUCCEEDED, payload: {plants}});
+
           cachePlants(plants);
         }
         console.log(plants);
       } catch(error){
           if(error.message=="Network Error"){
+            await fetchOffline();
+            return;
+          }
+          if(error.response && error.response.status == 304){
             await fetchOffline();
             return;
           }
