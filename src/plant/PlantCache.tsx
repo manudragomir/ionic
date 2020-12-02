@@ -68,7 +68,7 @@ export const deletePlantFromCache: (_id: String) => Promise<(PlantProps)> = asyn
     console.log("load cache");
     const {keys} = await Storage.keys();
     let plants = await Promise.all(keys.map(async (key) => {
-        if(key != 'token' || !key.startsWith("CONFLICT")){
+        if(key != 'token' && key.startsWith("CONFLICT") == false){
             console.log(key);
             return await getPlantMemoryCache(key);
         }

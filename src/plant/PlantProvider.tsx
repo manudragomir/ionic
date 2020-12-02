@@ -427,6 +427,7 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
         await merge(serverPlants);
         dispatch({type: MERGE_SERVER_SUCCEEDED});
       } catch(error){
+        console.log("ERROR IN SYNCING");
           if(!canceled){
             
           }
@@ -467,7 +468,7 @@ export const PlantProvider: React.FC<ItemProviderProps> = ( {children}) => {
       const updatedPlant = await editPlantOnServer(token, plant);
       dispatch({ type: SAVE_ITEM_SUCCEEDED, payload: { plant: updatedPlant } });
     } catch (error) {
-      if(error.response.status == 409){
+      if(error.response && error.response.status == 409){
         console.log("CONFLICT");
         let conflictPlant = error.response.data;
         await addConflictPlant(plant);
