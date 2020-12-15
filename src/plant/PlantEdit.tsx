@@ -24,6 +24,8 @@ import { RouteComponentProps } from 'react-router';
 import { PlantProps } from './PlantProps';
 import { camera, cloudUploadOutline, exitOutline, navigateOutline, trashOutline } from 'ionicons/icons';
 import { Photo, usePhotoGallery } from '../core/usePhoto';
+import { useMyLocation } from '../core/useMyLocation';
+import { MyMap } from '../core/MyMap';
 
 
 interface PlantEditProps extends RouteComponentProps<{id: string;}> {}
@@ -38,10 +40,19 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
   const [photo, setPhoto] = useState<Photo | undefined>(undefined);
   const [description, setDescription] = useState('');
   const [type, setType] = useState('');
+  const [latitude, setLatitude] = useState<number | undefined>(undefined);
+  const [longitude, setLongitude] = useState<number | undefined>(undefined);
+
+  const [currLatitude, setCurrLatitude] = useState<number | undefined>(undefined);
+  const [currLongitude, setCurrLongitude] = useState<number | undefined>(undefined);
+
   const [plant, setPlant] = useState<PlantProps>();
   const [conflict, setConflict] = useState<boolean>(false);
   const [conflictedPlant, setConflictedPlant] = useState<PlantProps | null>(null);
   const { takePhoto, loadPhoto, deletePhoto } = usePhotoGallery();
+
+  const myLocation = useMyLocation();
+  const { latitude: lat, longitude: lng } = myLocation.position?.coords || {}
 
   const takePicture = async () => {
     const routeId = match.params.id;
@@ -78,6 +89,17 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
   }
 
   useEffect( () => {
+    if(latitude == undefined && longitude == undefined){
+      setCurrLatitude(lat);
+      setCurrLongitude(lng);
+    }else{
+      setCurrLatitude(latitude);
+      setCurrLongitude(longitude);
+    }
+  }, [lat, lng, longitude, latitude]);
+
+
+  useEffect( () => {
     const routeId = match.params.id;
     getConflict?.(routeId).then( (answer) => {
       if(answer == null){
@@ -98,16 +120,31 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
       setName(plant.name);
       setDescription(plant.description);
       setType(plant.type);
+      setLatitude(plant.latitude);
+      setLongitude(plant.longitude);
     }
   }, [match.params.id, plants]);
 
   const handleEdit = () => {
-    const editedPlant = {...plant, description, name, type, photo} ;
+    const editedPlant = {...plant, description, name, type, latitude, longitude} ;
     editPlant && editPlant(editedPlant).then(() => history.goBack());
   };
 
   const handleExit = () => {
     history.goBack();
+  }
+
+  function change(source: string) {
+    return (e: any) => {
+      setCurrLatitude(e.latLng.lat());
+      setCurrLongitude(e.latLng.lng());
+      console.log(source, e.latLng.lat(), e.latLng.lng());
+    };
+  }
+
+  function setLocation(){
+    setLatitude(currLatitude);
+    setLongitude(currLongitude);
   }
 
   return (
@@ -199,6 +236,44 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
         {photo && <IonImg src={photo.webviewPath}/>}
           {!photo && <IonLabel>No photo uploaded</IonLabel>}
         </IonItem>
+
+        <IonItem>
+          <IonLabel>Where is the plant located?</IonLabel>
+        </IonItem>
+
+        <IonItem>
+            <IonLabel position="floating">Latitude of plant location</IonLabel>
+            <IonInput value={latitude || "Not set yet!"} readonly></IonInput>
+        </IonItem>
+
+        <IonItem>
+            <IonLabel position="floating">Longitude of plant location</IonLabel>
+            <IonInput value={longitude || "Not set yet!"} readonly></IonInput>
+        </IonItem>
+
+        <IonItem>
+            <IonLabel position="floating">Current latitude on map</IonLabel>
+            <IonInput value={currLatitude || "Not set yet!"} readonly></IonInput>
+        </IonItem>
+
+        <IonItem>
+            <IonLabel position="floating">Current longitude on map</IonLabel>
+            <IonInput value={currLongitude || "Not set yet!"} readonly></IonInput>
+        </IonItem>
+
+        <IonButton onClick={setLocation}>
+          SET LOCATION TO PLANT
+        </IonButton>
+
+        {currLatitude && currLongitude &&
+          <MyMap
+            lat={currLatitude}
+            lng={currLongitude}
+            onMapClick={change('onMap')}
+            onMarkerClick={change('onMarker')}
+          />
+        }
+        
         
         <IonFab vertical="bottom" horizontal="center" slot="fixed">
           <IonRow>
@@ -207,16 +282,7 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
                 <IonIcon icon={camera}/>
               </IonFabButton>
             </IonCol>
-            <IonCol>
-              <IonFabButton>
-                <IonIcon icon={navigateOutline}/>
-              </IonFabButton>
-            </IonCol>
           </IonRow>
-        </IonFab>
-
-        <IonFab vertical="bottom">
-          
         </IonFab>
 
         <IonFab vertical="bottom" horizontal="end" slot="fixed">

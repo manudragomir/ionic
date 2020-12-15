@@ -7,4 +7,6 @@ export interface PlantProps{
     type: string;
     loaded?: boolean;
     version?: number;
+    latitude?: number;
+    longitude?: number;
 }

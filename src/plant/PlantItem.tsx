@@ -15,7 +15,7 @@ interface PlantPropsExtended extends PlantProps{
   onEdit: (_id?: string) => void;
 }
 
-const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type, onEdit, loaded, version }) => {
+const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type, onEdit, loaded, version, latitude, longitude }) => {
   const { getConflict, plants } = useContext(PlantContext);
   const { offline } = useContext(AuthContext);
   const [conflict, setConflict] = useState<boolean>(false);
@@ -54,6 +54,8 @@ const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type,
         <p>{description}</p>
         <p>{type}</p>
         <p>{version}</p>
+        <p>{latitude}</p>
+        <p>{longitude}</p>
       </IonLabel>
       
       <IonThumbnail slot="start">
