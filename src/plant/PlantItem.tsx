@@ -1,9 +1,10 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { IonButton, IonIcon, IonItem, IonLabel } from '@ionic/react';
+import { IonButton, IonIcon, IonImg, IonItem, IonLabel, IonThumbnail } from '@ionic/react';
 import { leafOutline, alertOutline, checkmarkOutline, analyticsOutline, accessibilityOutline } from 'ionicons/icons';
 import { PlantProps } from './PlantProps'
 import { PlantContext } from './PlantProvider';
 import { AuthContext } from '../auth';
+import { Photo, usePhotoGallery } from '../core/usePhoto';
 
 // interface PlantPropsMoreExtended extends PlantPropsExtended
 // {
@@ -19,6 +20,18 @@ const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type,
   const { offline } = useContext(AuthContext);
   const [conflict, setConflict] = useState<boolean>(false);
   const [colorString, setColorString] = useState<string>('default');
+
+  const [photo, setPhoto] = useState<Photo | undefined>(undefined);
+  const { loadPhoto } = usePhotoGallery();
+
+  const uploadPhoto = async () => {
+    const myPhoto = await loadPhoto(_id);
+    setPhoto(myPhoto);
+  }
+  
+  useEffect( () => {
+    uploadPhoto();
+  }, []);
 
   useEffect(() => {
     getConflict?.(_id!).then( (answer) => {
@@ -42,6 +55,11 @@ const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type,
         <p>{type}</p>
         <p>{version}</p>
       </IonLabel>
+      
+      <IonThumbnail slot="start">
+            <IonImg src={photo?.webviewPath} />
+          </IonThumbnail>
+
       <IonButton slot="end">
         {loaded == true && <IonIcon icon={alertOutline}/>}
         {loaded == undefined && <IonIcon icon={checkmarkOutline}/>}

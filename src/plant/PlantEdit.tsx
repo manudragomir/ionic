@@ -1,12 +1,15 @@
 import React, { useContext, useEffect, useState } from 'react';
 import {
+  IonActionSheet,
   IonButton,
   IonButtons,
+  IonCol,
   IonContent,
   IonFab,
   IonFabButton,
   IonHeader,
   IonIcon,
+  IonImg,
   IonInput,
   IonItem,
   IonLabel,
@@ -19,7 +22,8 @@ import {
 import { PlantContext } from './PlantProvider';
 import { RouteComponentProps } from 'react-router';
 import { PlantProps } from './PlantProps';
-import { cloudUploadOutline, exitOutline, trashOutline } from 'ionicons/icons';
+import { camera, cloudUploadOutline, exitOutline, navigateOutline, trashOutline } from 'ionicons/icons';
+import { Photo, usePhotoGallery } from '../core/usePhoto';
 
 
 interface PlantEditProps extends RouteComponentProps<{id: string;}> {}
@@ -31,11 +35,36 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
           pushChanges, quitChanges } = useContext(PlantContext);
 
   const [name, setName] = useState('');
+  const [photo, setPhoto] = useState<Photo | undefined>(undefined);
   const [description, setDescription] = useState('');
   const [type, setType] = useState('');
   const [plant, setPlant] = useState<PlantProps>();
   const [conflict, setConflict] = useState<boolean>(false);
   const [conflictedPlant, setConflictedPlant] = useState<PlantProps | null>(null);
+  const { takePhoto, loadPhoto, deletePhoto } = usePhotoGallery();
+
+  const takePicture = async () => {
+    const routeId = match.params.id;
+    const photoTaken = await takePhoto(routeId);
+    setPhoto(photoTaken);
+  }
+
+  const handleDeletePicture = async ()  => {
+    const routeId = match.params.id;
+    await deletePhoto(photo!, routeId);
+    console.log("Picture deleted");
+    setPhoto(undefined);
+  }
+
+  const loadPicture = async () => {
+    const routeId = match.params.id;
+    const photoUploaded = await loadPhoto(routeId); 
+    setPhoto(photoUploaded);
+  }
+
+  useEffect( () => {
+    loadPicture();
+  }, []);
 
   const handleQuitChanges = () => {
     const routeId = match.params.id;
@@ -73,7 +102,7 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
   }, [match.params.id, plants]);
 
   const handleEdit = () => {
-    const editedPlant = {...plant, description, name, type} ;
+    const editedPlant = {...plant, description, name, type, photo} ;
     editPlant && editPlant(editedPlant).then(() => history.goBack());
   };
 
@@ -162,11 +191,47 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
         )
         }
 
+        <IonItem>
+          <IonLabel className="ion-padding">Plant looks like: </IonLabel>
+        </IonItem>
+
+        <IonItem> 
+        {photo && <IonImg src={photo.webviewPath}/>}
+          {!photo && <IonLabel>No photo uploaded</IonLabel>}
+        </IonItem>
+        
         <IonFab vertical="bottom" horizontal="center" slot="fixed">
+          <IonRow>
+            <IonCol>
+              <IonFabButton onClick={() => takePicture()}>
+                <IonIcon icon={camera}/>
+              </IonFabButton>
+            </IonCol>
+            <IonCol>
+              <IonFabButton>
+                <IonIcon icon={navigateOutline}/>
+              </IonFabButton>
+            </IonCol>
+          </IonRow>
+        </IonFab>
+
+        <IonFab vertical="bottom">
+          
+        </IonFab>
+
+        <IonFab vertical="bottom" horizontal="end" slot="fixed">
           <IonFabButton onClick={() => deletePlant && deletePlant(match.params.id).then(() => history.goBack())}>
             <IonIcon icon={trashOutline}/>
           </IonFabButton>
         </IonFab>
+
+        <IonFab vertical="bottom" horizontal="start" slot="fixed">
+          <IonFabButton onClick={() => handleDeletePicture()}>
+            <IonLabel>X photo</IonLabel>
+          </IonFabButton>
+        </IonFab>
+
+        
        
       </IonContent>
     </IonPage>

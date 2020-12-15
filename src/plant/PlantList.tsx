@@ -33,7 +33,7 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
         }
         else{
             setNetworkMessage("ONLINE :)");
-            setDisableInfiniteScroll(true);
+            setDisableInfiniteScroll(false);
             setPage(0);
         }
 
@@ -66,7 +66,7 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
 
     useEffect( () => {
         if(offline == false){
-            if(filter == undefined || filter == 'any'){
+            if(filter == undefined){
                 setMyPlants(plants);
             }
             else{

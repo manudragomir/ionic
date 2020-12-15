@@ -1,3 +1,5 @@
+import { Photo } from "../core/usePhoto";
+
 export interface PlantProps{
     _id?: string;
     name: string;
