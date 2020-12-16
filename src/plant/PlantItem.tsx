@@ -15,23 +15,12 @@ interface PlantPropsExtended extends PlantProps{
   onEdit: (_id?: string) => void;
 }
 
-const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type, onEdit, loaded, version, latitude, longitude }) => {
+const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type, onEdit, loaded, version, latitude, longitude, photo }) => {
   const { getConflict, plants } = useContext(PlantContext);
   const { offline } = useContext(AuthContext);
   const [conflict, setConflict] = useState<boolean>(false);
   const [colorString, setColorString] = useState<string>('default');
-
-  const [photo, setPhoto] = useState<Photo | undefined>(undefined);
-  const { loadPhoto } = usePhotoGallery();
-
-  const uploadPhoto = async () => {
-    const myPhoto = await loadPhoto(_id);
-    setPhoto(myPhoto);
-  }
-  
-  useEffect( () => {
-    uploadPhoto();
-  }, []);
+  const [photoLink, setPhotoLink] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     getConflict?.(_id!).then( (answer) => {
@@ -46,6 +35,19 @@ const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type,
     });
   }, [offline, getConflict, plants]);
 
+  useEffect(() => { 
+      if(photo != undefined){
+        console.log("try to get new photo");
+        let base64Data = photo.base64Encoding;
+        let converted_image= "data:image/jpeg;base64,"+base64Data;
+        setPhotoLink(converted_image);
+      }
+      else{
+        setPhotoLink(undefined);
+      }
+   }, [photo]);
+
+
   return (
     <IonItem style={{height: 200}}>
       <IonIcon icon={leafOutline} slot="start"></IonIcon>
@@ -58,9 +60,9 @@ const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type,
         <p>{longitude}</p>
       </IonLabel>
       
-      <IonThumbnail slot="start">
-            <IonImg src={photo?.webviewPath} />
-          </IonThumbnail>
+      {photoLink && <IonThumbnail slot="start">
+            <IonImg src={photoLink} />
+      </IonThumbnail>}
 
       <IonButton slot="end">
         {loaded == true && <IonIcon icon={alertOutline}/>}

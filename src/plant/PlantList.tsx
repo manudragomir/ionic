@@ -124,9 +124,9 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
                     <IonList>
                         {myPlants
                             .filter(plant => searchName == undefined || plant.name.indexOf(searchName) >= 0)
-                            .map(({_id, name, description, type, loaded, version, latitude, longitude}) => 
+                            .map(({_id, name, description, type, loaded, version, latitude, longitude, photo}) => 
                             <PlantItem key={_id} name={name} description={description} type={type} loaded={loaded} _id={_id}
-                                        version={version} latitude={latitude} longitude={longitude}
+                                        version={version} latitude={latitude} longitude={longitude} photo={photo}
                                         onEdit={() => {history.push(`/plants/${_id}`)}} />) }
                     </IonList>
                     )}

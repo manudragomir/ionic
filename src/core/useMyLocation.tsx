@@ -17,7 +17,9 @@ export const useMyLocation = () => {
     let cancelled = false;
     Geolocation.getCurrentPosition()
       .then(position => updateMyPosition('current', position))
-      .catch(error => updateMyPosition('current',undefined, error));
+      .catch(error => {
+        updateMyPosition('current', undefined , error);
+      });
     const callbackId = Geolocation.watchPosition({}, (position, error) => {
       updateMyPosition('watch', position, error);
     });

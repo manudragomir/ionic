@@ -51,6 +51,8 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
   const [conflictedPlant, setConflictedPlant] = useState<PlantProps | null>(null);
   const { takePhoto, loadPhoto, deletePhoto } = usePhotoGallery();
 
+  const [photoLink, setPhotoLink] = useState<string | undefined>(undefined);
+
   const myLocation = useMyLocation();
   const { latitude: lat, longitude: lng } = myLocation.position?.coords || {}
 
@@ -68,10 +70,19 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
   }
 
   const loadPicture = async () => {
-    const routeId = match.params.id;
-    const photoUploaded = await loadPhoto(routeId); 
-    setPhoto(photoUploaded);
+    // const routeId = match.params.id;
+    // const photoUploaded = await loadPhoto(routeId); 
+    // setPhoto(photoUploaded);
   }
+
+  useEffect(() => { 
+    if(photo != undefined){
+      console.log("try to update plant");
+      let base64Data = photo.base64Encoding;
+      let converted_image= "data:image/jpeg;base64,"+base64Data;
+      setPhotoLink(converted_image);
+    }
+   }, [photo, plant]);
 
   useEffect( () => {
     loadPicture();
@@ -122,11 +133,12 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
       setType(plant.type);
       setLatitude(plant.latitude);
       setLongitude(plant.longitude);
+      setPhoto(plant.photo);
     }
   }, [match.params.id, plants]);
 
   const handleEdit = () => {
-    const editedPlant = {...plant, description, name, type, latitude, longitude} ;
+    const editedPlant = {...plant, description, name, type, latitude, longitude, photo} ;
     editPlant && editPlant(editedPlant).then(() => history.goBack());
   };
 
@@ -229,11 +241,23 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
         }
 
         <IonItem>
-          <IonLabel className="ion-padding">Plant looks like: </IonLabel>
+          <IonFab horizontal="end">
+            <IonFabButton onClick={() => handleDeletePicture()}>
+              <IonLabel>X photo</IonLabel>
+            </IonFabButton>
+          </IonFab>               
+        
+        <IonFab horizontal="center">
+              <IonFabButton onClick={() => takePicture()}>
+                <IonIcon icon={camera}/>
+              </IonFabButton>
+        </IonFab>
+
+          <IonLabel className="ion-padding">Plant looks like: </IonLabel>        
         </IonItem>
 
         <IonItem> 
-        {photo && <IonImg src={photo.webviewPath}/>}
+        {photo && <IonImg src={photoLink}/>}
           {!photo && <IonLabel>No photo uploaded</IonLabel>}
         </IonItem>
 
@@ -273,27 +297,11 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
             onMarkerClick={change('onMarker')}
           />
         }
-        
-        
-        <IonFab vertical="bottom" horizontal="center" slot="fixed">
-          <IonRow>
-            <IonCol>
-              <IonFabButton onClick={() => takePicture()}>
-                <IonIcon icon={camera}/>
-              </IonFabButton>
-            </IonCol>
-          </IonRow>
-        </IonFab>
+
 
         <IonFab vertical="bottom" horizontal="end" slot="fixed">
           <IonFabButton onClick={() => deletePlant && deletePlant(match.params.id).then(() => history.goBack())}>
             <IonIcon icon={trashOutline}/>
-          </IonFabButton>
-        </IonFab>
-
-        <IonFab vertical="bottom" horizontal="start" slot="fixed">
-          <IonFabButton onClick={() => handleDeletePicture()}>
-            <IonLabel>X photo</IonLabel>
           </IonFabButton>
         </IonFab>
 

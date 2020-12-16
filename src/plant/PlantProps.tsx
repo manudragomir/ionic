@@ -9,4 +9,5 @@ export interface PlantProps{
     version?: number;
     latitude?: number;
     longitude?: number;
+    photo?: Photo;
 }

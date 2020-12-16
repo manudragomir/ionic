@@ -5,8 +5,7 @@ import { base64FromPath, useFilesystem } from '@ionic/react-hooks/filesystem';
 import { useStorage } from '@ionic/react-hooks/storage';
 
 export interface Photo {
-  filepath: string;
-  webviewPath?: string;
+  base64Encoding?: string;
 }
 
 export function usePhotoGallery() {
@@ -15,7 +14,7 @@ export function usePhotoGallery() {
 
   const takePhoto = async (id: string) => {
     const cameraPhoto = await getPhoto({
-      resultType: CameraResultType.Uri,
+      resultType: CameraResultType.Base64,
       source: CameraSource.Camera,
       quality: 100
     });
@@ -28,7 +27,7 @@ export function usePhotoGallery() {
   const { readFile, writeFile, deleteFile } = useFilesystem();
 
   const savePicture = async (photo: CameraPhoto, fileName: string): Promise<Photo> => {
-    const base64Data = await base64FromPath(photo.webPath!);
+    const base64Data = photo.base64String!;
     await writeFile({
       path: fileName,
       data: base64Data,
@@ -36,8 +35,7 @@ export function usePhotoGallery() {
     });
 
     return {
-      filepath: fileName,
-      webviewPath: photo.webPath
+      base64Encoding: base64Data
     };
   };
 
@@ -48,10 +46,10 @@ export function usePhotoGallery() {
         return undefined;
       }
       const file = await readFile({
-        path: photo.filepath,
+        path: id + '.jpeg',
         directory: FilesystemDirectory.Data
       });
-      photo.webviewPath = `data:image/jpeg;base64,${file.data}`;
+      photo.base64Encoding = file.data;
       return photo;
     };
 
@@ -60,7 +58,8 @@ export function usePhotoGallery() {
         return;
       }
       remove(id!);
-      const filename = photo.filepath.substr(photo.filepath.lastIndexOf('/') + 1);
+      const filepath = id + '.jpeg';
+      const filename = filepath.substr(filepath.lastIndexOf('/') + 1);
       await deleteFile({
         path: filename,
         directory: FilesystemDirectory.Data

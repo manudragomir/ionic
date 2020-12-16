@@ -11,7 +11,6 @@ interface MyMapProps {
 }
 
 export const MyMap =
-    
   compose<MyMapProps, any>(
     withProps({
       googleMapURL:
