@@ -1,9 +1,11 @@
 import React, { useContext, useEffect, useState } from 'react';
 import {
+  createAnimation,
   IonButton,
   IonButtons,
   IonContent,
   IonHeader,
+  IonIcon,
   IonInput,
   IonItem,
   IonLabel,
@@ -15,6 +17,8 @@ import {
 import { PlantContext } from './PlantProvider';
 import { RouteComponentProps } from 'react-router';
 import { PlantProps } from './PlantProps';
+import { createShakingAnimation } from './PlantAnimations';
+import { cloudUploadOutline, exitOutline } from 'ionicons/icons';
 
 
 const PlantAdd: React.FC<RouteComponentProps> = ({ history }) => {
@@ -31,10 +35,46 @@ const PlantAdd: React.FC<RouteComponentProps> = ({ history }) => {
         name: name,
         type: type});
     }, [description, name, type]);
+  
+  const validationWithAnimation = () => {
+    let animationsContainer = [];
+    if(!description){
+      let descriptionIonItem = document.getElementById('descriptionIonItem');
+      animationsContainer.push(createShakingAnimation(descriptionIonItem!!));
+    }
+
+    if(!name){
+      let nameIonItem = document.getElementById('nameIonItem');
+      animationsContainer.push(createShakingAnimation(nameIonItem!!));
+    }
+
+    if(!type){
+      let typeIonItem = document.getElementById('typeIonItem');
+      animationsContainer.push(createShakingAnimation(typeIonItem!!));
+    }
+
+    return animationsContainer;
+  }
 
   const handleSave = () => {
-    plant && addPlant && addPlant(plant).then(() => history.goBack());
+    const animationsContainer = validationWithAnimation();
+    console.log(animationsContainer);
+    if(animationsContainer.length == 0){
+      plant && addPlant && addPlant(plant).then(() => history.goBack());
+    }
+    else{
+      const parentAnimation = createAnimation()
+        .duration(100)
+        .direction('alternate')
+        .iterations(6)
+        .addAnimation(animationsContainer);
+      parentAnimation.play(); 
+    }
   };
+
+  const handleExit = () => {
+    history.goBack();
+  }
 
   return (
     <IonPage>
@@ -43,24 +83,28 @@ const PlantAdd: React.FC<RouteComponentProps> = ({ history }) => {
           <IonTitle>Add a new plant</IonTitle>
           <IonButtons slot="end">
             <IonButton onClick={handleSave}>
-              Add
+                <IonIcon icon={cloudUploadOutline} slot="start"></IonIcon>
+              Save
+            </IonButton>
+            <IonButton onClick={handleExit}>
+                <IonIcon icon={exitOutline} slot="start"></IonIcon>
+              Exit
             </IonButton>
           </IonButtons>
         </IonToolbar>
       </IonHeader>
-
       <IonContent>
-        <IonItem>
+        <IonItem id="nameIonItem">
             <IonLabel position="floating">Plant's Name</IonLabel>
             <IonInput value={name} onIonChange={e => setName(e.detail.value!)}></IonInput>
         </IonItem>
 
-        <IonItem>
+        <IonItem id="descriptionIonItem">
             <IonLabel position="floating">Plant's Description</IonLabel>
             <IonInput value={description} onIonChange={e => setDescription(e.detail.value!)}></IonInput>
         </IonItem>
 
-        <IonItem>
+        <IonItem id="typeIonItem">
             <IonLabel position="floating">Plant's Type</IonLabel>
             <IonInput value={type} onIonChange={e => setType(e.detail.value!)}></IonInput>
         </IonItem>

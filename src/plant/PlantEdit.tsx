@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import {
+  createAnimation,
   IonActionSheet,
   IonButton,
   IonButtons,
@@ -26,6 +27,7 @@ import { camera, cloudUploadOutline, exitOutline, navigateOutline, trashOutline 
 import { Photo, usePhotoGallery } from '../core/usePhoto';
 import { useMyLocation } from '../core/useMyLocation';
 import { MyMap } from '../core/MyMap';
+import { createShakingAnimation, playChainAnimation } from './PlantAnimations';
 
 
 interface PlantEditProps extends RouteComponentProps<{id: string;}> {}
@@ -64,7 +66,8 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
 
   const handleDeletePicture = async ()  => {
     const routeId = match.params.id;
-    await deletePhoto(photo!, routeId);
+    await deletePhoto(photo!, routeId)
+      .catch((err) => console.log(err));
     console.log("Picture deleted");
     setPhoto(undefined);
   }
@@ -86,6 +89,8 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
 
   useEffect( () => {
     loadPicture();
+    const rootNode = document.getElementById('editPageIonContent');
+    rootNode && playChainAnimation(rootNode.childNodes as unknown as Element[]);
   }, []);
 
   const handleQuitChanges = () => {
@@ -139,7 +144,20 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
 
   const handleEdit = () => {
     const editedPlant = {...plant, description, name, type, latitude, longitude, photo} ;
-    editPlant && editPlant(editedPlant).then(() => history.goBack());
+    
+    const animationsContainer = validationWithAnimation();
+    console.log(animationsContainer);
+    if(animationsContainer.length == 0){
+      editPlant && editPlant(editedPlant).then(() => history.goBack());
+    }
+    else{
+      const parentAnimation = createAnimation()
+        .duration(100)
+        .direction('alternate')
+        .iterations(6)
+        .addAnimation(animationsContainer);
+      parentAnimation.play(); 
+    }
   };
 
   const handleExit = () => {
@@ -157,6 +175,26 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
   function setLocation(){
     setLatitude(currLatitude);
     setLongitude(currLongitude);
+  }
+
+  const validationWithAnimation = () => {
+    let animationsContainer = [];
+    if(!description){
+      let descriptionIonItem = document.getElementById('descriptionIonItem');
+      animationsContainer.push(createShakingAnimation(descriptionIonItem!!));
+    }
+
+    if(!name){
+      let nameIonItem = document.getElementById('nameIonItem');
+      animationsContainer.push(createShakingAnimation(nameIonItem!!));
+    }
+
+    if(!type){
+      let typeIonItem = document.getElementById('typeIonItem');
+      animationsContainer.push(createShakingAnimation(typeIonItem!!));
+    }
+
+    return animationsContainer;
   }
 
   return (
@@ -177,18 +215,18 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
         </IonToolbar>
       </IonHeader>
 
-      <IonContent>
-        <IonItem>
+      <IonContent id='editPageIonContent'>
+        <IonItem id="nameIonItem">
             <IonLabel position="floating">Name</IonLabel>
             <IonInput value={name} onIonChange={e => setName(e.detail.value!)}></IonInput>
         </IonItem>
 
-        <IonItem>
+        <IonItem id="descriptionIonItem">
             <IonLabel position="floating">Description</IonLabel>
             <IonInput value={description} onIonChange={e => setDescription(e.detail.value!)}></IonInput>
         </IonItem>
 
-        <IonItem>
+        <IonItem id="typeIonItem">
             <IonLabel position="floating">Type</IonLabel>
             <IonInput value={type} onIonChange={e => setType(e.detail.value!)}></IonInput>
         </IonItem>

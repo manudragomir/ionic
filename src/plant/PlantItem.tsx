@@ -1,10 +1,11 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { IonButton, IonIcon, IonImg, IonItem, IonLabel, IonThumbnail } from '@ionic/react';
+import { CreateAnimation, IonButton, IonIcon, IonImg, IonItem, IonLabel, IonThumbnail } from '@ionic/react';
 import { leafOutline, alertOutline, checkmarkOutline, analyticsOutline, accessibilityOutline } from 'ionicons/icons';
 import { PlantProps } from './PlantProps'
 import { PlantContext } from './PlantProvider';
 import { AuthContext } from '../auth';
 import { Photo, usePhotoGallery } from '../core/usePhoto';
+import { playIconAnimation } from './PlantAnimations';
 
 // interface PlantPropsMoreExtended extends PlantPropsExtended
 // {
@@ -47,10 +48,14 @@ const PlantItem: React.FC<PlantPropsExtended> = ({ _id, name, description, type,
       }
    }, [photo]);
 
+   const startAnimation = (e: Element) => {
+     
+     playIconAnimation(e.firstElementChild);
+   }
 
   return (
-    <IonItem style={{height: 200}}>
-      <IonIcon icon={leafOutline} slot="start"></IonIcon>
+    <IonItem style={{height: 200}} onTouchStart={e => startAnimation(e.currentTarget)}>
+      <IonIcon className="animatedIcon" icon={leafOutline} slot="start" ></IonIcon>
       <IonLabel onClick={() => onEdit(_id)}>
         <h2 style={{color: colorString }}>{name}</h2>
         <p>{description}</p>
