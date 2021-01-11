@@ -17,7 +17,7 @@ import {
 import { PlantContext } from './PlantProvider';
 import { RouteComponentProps } from 'react-router';
 import { PlantProps } from './PlantProps';
-import { createShakingAnimation } from './PlantAnimations';
+import { createShakingAnimation, playGroupAnimation } from './PlantAnimations';
 import { cloudUploadOutline, exitOutline } from 'ionicons/icons';
 
 
@@ -63,12 +63,7 @@ const PlantAdd: React.FC<RouteComponentProps> = ({ history }) => {
       plant && addPlant && addPlant(plant).then(() => history.goBack());
     }
     else{
-      const parentAnimation = createAnimation()
-        .duration(100)
-        .direction('alternate')
-        .iterations(6)
-        .addAnimation(animationsContainer);
-      parentAnimation.play(); 
+      playGroupAnimation(animationsContainer);
     }
   };
 

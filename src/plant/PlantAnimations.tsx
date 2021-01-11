@@ -7,9 +7,9 @@ export function playIconAnimation(iconAnimated: Element | null) {
     if (iconAnimated) {
       const animation = createAnimation()
         .addElement(iconAnimated)
-        .duration(1000)
+        .duration(1000) 
         .direction('alternate')
-        .iterations(1)
+        .iterations(2)
         .keyframes([
           { offset: 0, transform: 'scale(1)', opacity: '1' },
           { offset: 0.5, transform: 'scale(2)', opacity: '0.5'},
@@ -18,6 +18,17 @@ export function playIconAnimation(iconAnimated: Element | null) {
         animation.play();
     }
 }
+
+export function playGroupAnimation(animationsContainer: Animation[]){
+    const parentAnimation = createAnimation()
+        .duration(100)
+        .direction('alternate')
+        .iterations(6)
+        .addAnimation(animationsContainer);
+    parentAnimation.play(); 
+}
+
+
 
 export function createShakingAnimation(animatedElem: Element){
     const MAX_TRANSLATE = 10;
@@ -28,7 +39,7 @@ export function createShakingAnimation(animatedElem: Element){
     return animation;
 }
 
-export function createEnteringAnimation(animatedElem: Element){
+function createEnteringAnimation(animatedElem: Element){
     const MAX_TRANSLATE = 10;
     const animation = createAnimation()
         .addElement(animatedElem)

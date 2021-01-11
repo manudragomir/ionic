@@ -1,11 +1,12 @@
 import React, { useContext, useEffect, useState } from 'react'
-import {IonContent, IonFabButton, IonHeader, IonLabel, IonPage, IonTitle, IonToolbar, IonFab, IonIcon, IonLoading, IonList, IonButton, IonSelect, IonSelectOption, IonSearchbar, IonInfiniteScroll, IonInfiniteScrollContent, IonFooter} from '@ionic/react'
+import {IonContent, IonFabButton, IonHeader, IonLabel, IonPage, IonTitle, IonToolbar, IonFab, IonIcon, IonLoading, IonList, IonButton, IonSelect, IonSelectOption, IonSearchbar, IonInfiniteScroll, IonInfiniteScrollContent, IonFooter, IonModal} from '@ionic/react'
 import PlantItem from './PlantItem'
 import { PlantContext } from './PlantProvider'
 import { add } from 'ionicons/icons';
 import { RouteComponentProps } from 'react-router';
 import { AuthContext } from '../auth';
 import { PlantProps } from './PlantProps';
+import { playIconAnimation } from './PlantAnimations';
 
 const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
     const { plants, fetching, fetchingError, types, filterPlants, filterError } = useContext(PlantContext);
@@ -85,10 +86,9 @@ const PlantList: React.FC<RouteComponentProps> = ({ history }) => {
         <IonPage>
             <IonHeader>
                 <IonToolbar>
-                    <IonTitle>
+                    <IonTitle onAnimationStart={e => playIconAnimation(e.currentTarget)}>
                         Plants Repository
-                    </IonTitle>
-                    
+                    </IonTitle>                    
                     <IonButton slot="end" onClick={() => {
                         if(logout !== undefined) {
                             logout();

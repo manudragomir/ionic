@@ -4,7 +4,6 @@ import { leafOutline, alertOutline, checkmarkOutline, analyticsOutline, accessib
 import { PlantProps } from './PlantProps'
 import { PlantContext } from './PlantProvider';
 import { AuthContext } from '../auth';
-import { Photo, usePhotoGallery } from '../core/usePhoto';
 import { playIconAnimation } from './PlantAnimations';
 
 // interface PlantPropsMoreExtended extends PlantPropsExtended

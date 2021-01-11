@@ -23,11 +23,12 @@ import {
 import { PlantContext } from './PlantProvider';
 import { RouteComponentProps } from 'react-router';
 import { PlantProps } from './PlantProps';
-import { camera, cloudUploadOutline, exitOutline, navigateOutline, trashOutline } from 'ionicons/icons';
+import { camera, cloudUploadOutline, exitOutline, informationCircleOutline, navigateOutline, trashOutline } from 'ionicons/icons';
 import { Photo, usePhotoGallery } from '../core/usePhoto';
 import { useMyLocation } from '../core/useMyLocation';
 import { MyMap } from '../core/MyMap';
-import { createShakingAnimation, playChainAnimation } from './PlantAnimations';
+import { createShakingAnimation, playChainAnimation, playGroupAnimation } from './PlantAnimations';
+import { InfoModal } from './InfoModal';
 
 
 interface PlantEditProps extends RouteComponentProps<{id: string;}> {}
@@ -54,6 +55,8 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
   const { takePhoto, loadPhoto, deletePhoto } = usePhotoGallery();
 
   const [photoLink, setPhotoLink] = useState<string | undefined>(undefined);
+
+  const [showInfoModal, setShowInfoModal] = useState<boolean>(false);
 
   const myLocation = useMyLocation();
   const { latitude: lat, longitude: lng } = myLocation.position?.coords || {}
@@ -151,12 +154,7 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
       editPlant && editPlant(editedPlant).then(() => history.goBack());
     }
     else{
-      const parentAnimation = createAnimation()
-        .duration(100)
-        .direction('alternate')
-        .iterations(6)
-        .addAnimation(animationsContainer);
-      parentAnimation.play(); 
+      playGroupAnimation(animationsContainer);
     }
   };
 
@@ -202,6 +200,12 @@ const PlantEdit: React.FC<PlantEditProps> = ({ history, match }) => {
       <IonHeader>
         <IonToolbar>
           <IonTitle>Edit Plant</IonTitle>
+          <InfoModal isModalOpen={showInfoModal} onDismissFn={() => setShowInfoModal(false)}/>
+
+          <IonButton fill="clear" slot="start" onClick={() => setShowInfoModal(true)}>
+            <IonIcon icon={informationCircleOutline} size="large" slot="icon-only"/>
+          </IonButton>
+         
           <IonButtons slot="end">
             <IonButton onClick={handleEdit}>
                 <IonIcon icon={cloudUploadOutline} slot="start"></IonIcon>
